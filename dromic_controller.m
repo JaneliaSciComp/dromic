@@ -648,7 +648,7 @@ classdef dromic_controller < ws.controller
             top_stuff_to_histogram_plot_interspace_height = 3 ;
             % histograms plot height is set to fill leftover space in the
             % layout
-            bottom_space_height = 10 ;
+            bottom_space_height = 8 ;
             % we don't know the height of the bottom stuff yet, but it does
             % not depend on the figure/layout size            
 %             bottom_space_height = 2 ;
@@ -665,7 +665,7 @@ classdef dromic_controller < ws.controller
             start_stop_button_height = 28 ;
             width_from_start_bank_to_checkbox_bank = 26 ;
             % checkbox_bank_width = 80 ;
-            width_from_checkbox_bank_to_trigger_bank = 16 ;
+            width_from_checkbox_bank_to_trigger_bank = 30 ;
             height_from_layout_top_to_auto_y_checkbox = 6 ; 
 %             height_between_checkboxes = -1 ;
 %             width_of_auto_yrepeating_indent = 14 ;
@@ -673,7 +673,7 @@ classdef dromic_controller < ws.controller
             height_between_monitored_bank_rows = 6 ;
             height_between_pre_and_post = 26 ;
             width_between_trigger_bank_and_monitored_bank = 20 ;
-            width_from_monitor_bank_to_parameters_bank = 30 ;
+            width_from_monitor_bank_to_parameters_bank = 14 ;
             %trigger_bank_width = 150 ;
             %monitored_bank_width = 150 ;
             height_from_layout_top_to_trigger_bank = 6 ;
@@ -683,13 +683,18 @@ classdef dromic_controller < ws.controller
             % Histogram plot layout parameters                      
             width_from_layout_left_to_plot = 0 ;
             width_from_layout_right_to_plot = 0 ;            
-            histogram_axes_left_pad = 5 ;
-            histogram_axes_right_pad = 5 ;
+            histogram_axes_left_pad = 8 ;
+            histogram_axes_right_pad = 3 ;
+            histogram_axes_top_pad = 5 ;
             tick_length = 5 ;  % in pixels
             from_axes_to_y_range_buttons_width = 6 ;
             y_range_button_size = 20 ;  % those buttons are square
             %space_between_scroll_buttons=5;
             space_between_zoom_buttons = 5 ;
+            
+            width_from_label_to_edit=4;  % has to agree with value in ws.position_edit_label_and_units_bang()
+            width_from_edit_to_units=3;  % has to agree with value in ws.position_edit_label_and_units_bang()
+            text_width_correction = 2 ;  % added to text X extent to get width    % has to agree with value in ws.position_edit_label_and_units_bang()    
             
 %             % Bottom stuff layout parameters
 %             width_from_layout_left_to_update_rate_left=20;  
@@ -784,7 +789,7 @@ classdef dromic_controller < ws.controller
                 checkbox_bank_x_offset + ...
                 checkbox_bank_width + ...
                 width_from_checkbox_bank_to_trigger_bank + ...
-                widest_trigger_bank_label_width ;
+                widest_trigger_bank_label_width + text_width_correction + width_from_label_to_edit ;
             trigger_device_type_edit_y = top_stuff_top_y_offset - height_from_layout_top_to_trigger_bank - edit_height  ;
             ws.position_edit_label_and_units_bang( ...
                 self.trigger_device_type_edit_label_text_, ...
@@ -829,10 +834,7 @@ classdef dromic_controller < ws.controller
                 widest_trigger_bank_label_width) ;
            
             % Compute the trigger bank width
-            width_from_label_to_edit=4;  % has to agree with value in ws.position_edit_label_and_units_bang()
-            width_from_edit_to_units=3;  % has to agree with value in ws.position_edit_label_and_units_bang()
-            text_pad=2;  % added to text X extent to get width    % has to agree with value in ws.position_edit_label_and_units_bang()    
-            trigger_bank_width = widest_trigger_bank_label_width + width_from_label_to_edit + edit_width ;
+            trigger_bank_width = widest_trigger_bank_label_width + width_from_label_to_edit + edit_width + text_width_correction ;
 
 
             % 
@@ -909,7 +911,7 @@ classdef dromic_controller < ws.controller
             [monitored_threshold_edit_units_text_width, ~] = ...
                 ws.get_extent(self.monitored_threshold_edit_units_text_) ;            
             monitored_bank_width = ...
-                widest_monitored_bank_label_width + width_from_label_to_edit + edit_width + width_from_edit_to_units + text_pad + ...
+                widest_monitored_bank_label_width + width_from_label_to_edit + edit_width + width_from_edit_to_units + text_width_correction + ...
                 monitored_threshold_edit_units_text_width ;
 
 
@@ -1001,7 +1003,7 @@ classdef dromic_controller < ws.controller
 
             % Get the width of the parameters bank
             parameters_bank_width = ...
-                widest_parameters_bank_label_width + width_from_label_to_edit + edit_width + width_from_edit_to_units + text_pad + ...
+                widest_parameters_bank_label_width + width_from_label_to_edit + edit_width + width_from_edit_to_units + text_width_correction + ...
                 widest_parameters_units_width ;
 
             % Warn if the top stuff is wider than the layout as a whole
@@ -1032,25 +1034,34 @@ classdef dromic_controller < ws.controller
             %
             histogram_axes_area_x = width_from_layout_left_to_plot ;
             histogram_axes_area_width = ...
-                layout_width - width_from_layout_left_to_plot - width_from_layout_right_to_plot - y_range_button_size - from_axes_to_y_range_buttons_width ;
+                layout_width - width_from_layout_left_to_plot - width_from_layout_right_to_plot ;
             histogram_axes_area_height = ...
                 layout_height - ...
                 top_space_height - ...
-                top_stuff_to_histogram_plot_interspace_height - ...
                 top_stuff_height - ...
+                top_stuff_to_histogram_plot_interspace_height - ...
                 bottom_space_height ;
             histogram_axes_area_top_y = layout_top_y_offset - top_space_height - top_stuff_height - top_stuff_to_histogram_plot_interspace_height ;
             histogram_axes_area_y = histogram_axes_area_top_y - histogram_axes_area_height ;
             histogram_axes_outer_position = [histogram_axes_area_x histogram_axes_area_y histogram_axes_area_width histogram_axes_area_height] ;
             set(self.histogram_axes_, 'OuterPosition', histogram_axes_outer_position) ;
+
             tight_inset = round(get(self.histogram_axes_,'TightInset')) ;  % TightInset is sometimes non-integer in pixels (??)
             histogram_axes_x = histogram_axes_area_x + tight_inset(1) + histogram_axes_left_pad;
             histogram_axes_y = histogram_axes_area_y + tight_inset(2) ;
-            histogram_axes_width = histogram_axes_area_width - tight_inset(1) - tight_inset(3) - histogram_axes_left_pad - histogram_axes_right_pad ;
-            histogram_axes_height = histogram_axes_area_height - tight_inset(2) - tight_inset(4) ;
+            histogram_axes_width = ...
+                histogram_axes_area_width - tight_inset(1) - tight_inset(3) - histogram_axes_left_pad - histogram_axes_right_pad - ...
+                y_range_button_size - from_axes_to_y_range_buttons_width ;
+            histogram_axes_height = histogram_axes_area_height - tight_inset(2) - tight_inset(4) - histogram_axes_top_pad ;
             histogram_axes_position = [histogram_axes_x histogram_axes_y histogram_axes_width histogram_axes_height] ;
             set(self.histogram_axes_, 'Position', histogram_axes_position) ;
             
+%             histogram_axes_position = get(self.histogram_axes_, 'Position') ;
+%             histogram_axes_x = histogram_axes_position(1) ;
+%             histogram_axes_y = histogram_axes_position(2)  ;
+%             histogram_axes_width = histogram_axes_position(3)  ;
+%             histogram_axes_height = histogram_axes_position(4)  ;
+
             % set the axes tick length to keep a constant number of pels
             histogram_axes_size = max([histogram_axes_width histogram_axes_height]) ;
             tick_length_relative=tick_length / histogram_axes_size ;
