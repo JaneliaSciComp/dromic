@@ -88,12 +88,12 @@ classdef dromic_model < ws.model
             self.carryover_nidq_scan_index_ = -inf ;
             self.carryover_trigger_value_ = true ;  % this prevents a false-positive trigger at the start
             self.is_running_ = true ;
-            self.timer_.start() ;
+            start(self.timer_) ;
             self.update_control_properties_() ;
         end
 
         function stop(self)
-            self.timer_.stop() ;
+            stop(self.timer_) ;
             self.is_running_ = false ;
             self.update_control_properties_() ;
         end
@@ -124,9 +124,10 @@ classdef dromic_model < ws.model
                 maximum_nidq_scan_count = ...
                     round(0.001 * self.timer_period * timer_periods_to_fetch() * self.nidq_scan_rate_) ;
                     % Grab at most a few timer periods worth of data
+                self    
                 [int16_nidq_data_from_local_nidq_scan_index, nidq_data_first_nidq_scan_index] = FetchLatest( ...
                     self.spikegl_interface_, ...
-                    device_type_type.nidq, ...
+                    self.trigger_device_type_, ...
                     self.trigger_device_index0, ...
                     maximum_nidq_scan_count, ...
                     self.trigger_channel_index0) ;
@@ -280,8 +281,14 @@ classdef dromic_model < ws.model
         end
 
         function set_trigger_device_index0(self, new_value)
-            self.trigger_device_index0_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.trigger_device_index0_ = new_value_maybe(1) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for trigger_device_index0') ;
+            end
         end
 
         function result = trigger_channel_index0(self)
@@ -289,8 +296,14 @@ classdef dromic_model < ws.model
         end
 
         function set_trigger_channel_index0(self, new_value)
-            self.trigger_channel_index0_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.trigger_channel_index0_ = new_value_maybe(1) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for trigger_channel_index0') ;
+            end        
         end
 
         function result = trigger_bit_index0(self)
@@ -298,8 +311,14 @@ classdef dromic_model < ws.model
         end
 
         function set_trigger_bit_index0(self, new_value)
-            self.trigger_bit_index0_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.trigger_bit_index0_ = new_value_maybe(1) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for trigger_bit_index0') ;
+            end                    
         end
 
         function result = monitored_device_type(self)
@@ -341,8 +360,14 @@ classdef dromic_model < ws.model
         end
 
         function set_monitored_threshold(self, new_value)
-            self.monitored_threshold_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.monitored_threshold_ = new_value_maybe(1) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for monitored_threshold') ;
+            end                    
         end
 
         function result = pre_trigger_duration(self)
