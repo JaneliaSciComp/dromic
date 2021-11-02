@@ -7,7 +7,9 @@ classdef dromic_model < ws.model
         monitored_device_type_ = device_type_type.imec
         monitored_device_index0_ = 0
         monitored_channel_index0_ = 0  % assumed to be an imec channel
-        monitored_threshold_ = 0  % in units of plotted channel
+        monitored_threshold_ = 0  % uV
+        monitored_threshold_in_counts_
+        monitored_threshold_crossing_sign_ = +1  % either +1 (rising) or -1 (falling)
         pre_trigger_duration_ = 100  % ms
         post_trigger_duration_ = 100 % ms
         bin_duration_ = 10  % ms
@@ -62,16 +64,13 @@ classdef dromic_model < ws.model
             self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
             self.trigger_count_ = 0 ;
             self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
-
-            % Create the timer
-            self.timer_ = timer('Period', 0.001*self.timer_period, 'ExecutionMode', 'fixedRate', 'TimerFcn', @(~, ~)(self.handle_timer_tick())) ;
         end
 
         function delete(self)
             self.controller_ = [] ;
             if ~isempty(self.timer_) 
                 if isvalid(self.timer_) 
-                    self.timer_.stop() ;
+                    stop(self.timer_) ;
                     delete(self.timer_) ;
                 end
                 self.timer_ = [] ;
@@ -88,14 +87,39 @@ classdef dromic_model < ws.model
             self.carryover_nidq_scan_index_ = -inf ;
             self.carryover_trigger_value_ = true ;  % this prevents a false-positive trigger at the start
             self.is_running_ = true ;
+            % Clear the counts
+            self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+            self.trigger_count_ = 0 ;
+            % Compute the threshold in counts
+            scale_in_uV = ...
+                1e6*self.spikegl_interface_.GetStreamI16ToVolts(self.monitored_device_index0_, self.monitored_device_index0_, self.monitored_channel_index0_ ) ;
+            self.monitored_threshold_in_counts_ = self.monitored_threshold_ / scale_in_uV ;
+            % Check for a timer and delete it there is one.  (There shouldn't ever be
+            % on, but just for robustness.)
+            if ~isempty(self.timer_) 
+                if isvalid(self.timer_) 
+                    stop(self.timer_) ;
+                    delete(self.timer_) ;
+                end
+                self.timer_ = [] ;
+            end
+            self.timer_ = ...
+                timer('Period', 0.001*self.timer_period, ...
+                      'ExecutionMode', 'fixedRate', ...
+                      'Name', 'dromic-timer', ...
+                      'ObjectVisibility', 'off', ...
+                      'TimerFcn', @(~, ~)(self.handle_timer_tick()), ...
+                      'ErrorFcn', @(~, event)(self.handle_timer_error(event))) ;
             start(self.timer_) ;
             self.update_control_properties_() ;
         end
 
         function stop(self)
             stop(self.timer_) ;
+            delete(self.timer_) ;
+            self.timer_ = [] ;
             self.is_running_ = false ;
-            self.update_control_properties_() ;
+            self.update_control_properties_() ;            
         end
         
         function toggle_is_running(self)
@@ -106,25 +130,31 @@ classdef dromic_model < ws.model
             end
         end
 
-        function clear_sweeps(self)
-            self.trigger_index_from_sweep_index_ = zeros(0,1) ;  
-            self.time_from_spike_index_from_sweep_index_ = cell(0,1) ;
-            [self.bin_edges_, self.bin_centers_] = compute_bins(self.peri_trigger_window, self.bin_duration) ;
+        function clear(self)
             self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
             self.trigger_count_ = 0 ;
+            self.update_control_properties_() ;
+        end
+
+        function handle_timer_error(self, event)
+            self.stop() ;  % turns out it's OK that this deletes the timer
+            exception = MException(event.Data.messageID, event.Data.message) ;
+            ws.raise_dialog_on_exception(exception) ;
         end
 
         function handle_timer_tick(self)
-            self.handle_timer_tick_call_count_ = self.handle_timer_tick_call_count_ + 1 ;
-            %fprintf('handle_timer_tick() called.  Call count: %d\n', self.handle_timer_tick_call_count_) ;
             if ~self.allow_timer_callback_ ,
                 return
             end            
+            self.handle_timer_tick_call_count_ = self.handle_timer_tick_call_count_ + 1 ;
+            %fprintf('handle_timer_tick() called.  Call count: %d\n', self.handle_timer_tick_call_count_) ;
+%             if self.handle_timer_tick_call_count_ >= 20 ,
+%                 error('dromic:foo', 'Oh noes!') ;
+%             end
             if ~isempty(self.spikegl_interface_) && IsRunning(self.spikegl_interface_)     
                 maximum_nidq_scan_count = ...
                     round(0.001 * self.timer_period * timer_periods_to_fetch() * self.nidq_scan_rate_) ;
                     % Grab at most a few timer periods worth of data
-                self    
                 [int16_nidq_data_from_local_nidq_scan_index, nidq_data_first_nidq_scan_index] = FetchLatest( ...
                     self.spikegl_interface_, ...
                     self.trigger_device_type_, ...
@@ -162,9 +192,10 @@ classdef dromic_model < ws.model
                     trigger_from_recent_nidq_scan_index & ~trigger_from_recent_nidq_scan_index_plus_one ;
                 recent_nidq_scan_index_from_trigger_index = find(is_rising_edge_from_recent_nidq_scan_index) ; 
                 nidq_scan_index_from_trigger_index = nidq_scan_index_from_recent_nidq_scan_index(recent_nidq_scan_index_from_trigger_index) ;  %#ok<FNDSB> 
-                self.nidq_scan_index_from_unplotted_trigger_index_ = ...
+                new_nidq_scan_index_from_unplotted_trigger_index = ...
                     vertcat(self.nidq_scan_index_from_unplotted_trigger_index_, ...
-                            nidq_scan_index_from_trigger_index) ;
+                            nidq_scan_index_from_trigger_index) ;                
+                self.nidq_scan_index_from_unplotted_trigger_index_ = new_nidq_scan_index_from_unplotted_trigger_index ;
 
                 % If there are unplotted triggers, see if they are ripe for plotting yet
                 nidq_scan_index_from_unplotted_trigger_index = self.nidq_scan_index_from_unplotted_trigger_index_ ;
@@ -206,7 +237,8 @@ classdef dromic_model < ws.model
                         refractory_scan_count = round(0.001*self.minimum_time_between_spikes*self.imec_scan_rate_) ;
                         is_spike_from_window_imec_scan_index = threshold_crossings_with_refractory_period( ...
                             imec_data_from_window_imec_scan_index, ...
-                            self.monitored_threshold, ...
+                            self.monitored_threshold_in_counts_, ...
+                            self.monitored_threshold_crossing_sign_, ...
                             refractory_scan_count, ...
                             -inf, ...
                             +inf) ;
@@ -269,6 +301,8 @@ classdef dromic_model < ws.model
             new_value_maybe = device_type_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
                 self.trigger_device_type_ = new_value_maybe{1} ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
             end
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
@@ -284,6 +318,8 @@ classdef dromic_model < ws.model
             new_value_maybe = double_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
                 self.trigger_device_index0_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
             end                
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
@@ -299,6 +335,8 @@ classdef dromic_model < ws.model
             new_value_maybe = double_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
                 self.trigger_channel_index0_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
             end                
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
@@ -314,6 +352,8 @@ classdef dromic_model < ws.model
             new_value_maybe = double_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
                 self.trigger_bit_index0_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
             end                
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
@@ -329,21 +369,30 @@ classdef dromic_model < ws.model
             new_value_maybe = device_type_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
                 self.monitored_device_type_ = new_value_maybe{1} ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
             end
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,             
                 error('ws:invalid_value', 'Invalid value for monitored_device_type') ;                
             end
         end
-
         
         function result = monitored_device_index0(self)
             result = self.monitored_device_index0_ ;
         end
 
         function set_monitored_device_index0(self, new_value)
-            self.monitored_device_index0_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.monitored_device_index0_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for monitored_device_index0') ;
+            end                    
         end
 
         function result = monitored_channel_index0(self)
@@ -351,8 +400,16 @@ classdef dromic_model < ws.model
         end
 
         function set_monitored_channel_index0(self, new_value)
-            self.monitored_channel_index0_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.monitored_channel_index0_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for monitored_channel_index0') ;
+            end                               
         end
 
         function result = monitored_threshold(self)
@@ -363,10 +420,29 @@ classdef dromic_model < ws.model
             new_value_maybe = double_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
                 self.monitored_threshold_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
             end                
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
                 error('ws:invalid_value', 'Invalid value for monitored_threshold') ;
+            end                    
+        end
+
+        function result = monitored_threshold_crossing_sign(self)
+            result = self.monitored_threshold_crossing_sign_ ;
+        end
+        
+        function set_monitored_threshold_crossing_sign(self, new_value)
+            new_value_maybe = double_maybe_from_whatever(new_value, @(x)(~isnan(x) && x~=0), @sign) ;
+            if ~isempty(new_value_maybe) ,             
+                self.monitored_threshold_crossing_sign_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+            end                
+            self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for monitored_threshold_crossing_sign') ;
             end                    
         end
 
@@ -375,13 +451,19 @@ classdef dromic_model < ws.model
         end
 
         function set_pre_trigger_duration(self, new_value)
-            self.pre_trigger_duration_ = new_value ;
-            [self.bin_edges_, self.bin_centers_] = ...
-                compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
-            self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
-            self.trigger_count_ = 0 ;
-            self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.pre_trigger_duration_ = new_value_maybe(1) ;
+                [self.bin_edges_, self.bin_centers_] = ...
+                    compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+                self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for pre_trigger_duration') ;
+            end                    
         end
 
         function result = post_trigger_duration(self)
@@ -389,13 +471,19 @@ classdef dromic_model < ws.model
         end
 
         function set_post_trigger_duration(self, new_value)
-            self.post_trigger_duration_ = new_value ;
-            [self.bin_edges_, self.bin_centers_] = ...
-                compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
-            self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
-            self.trigger_count_ = 0 ;
-            self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.post_trigger_duration_ = new_value_maybe(1) ;
+                [self.bin_edges_, self.bin_centers_] = ...
+                    compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+                self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for post_trigger_duration') ;
+            end                    
         end
 
         function result = bin_duration(self)
@@ -403,13 +491,19 @@ classdef dromic_model < ws.model
         end
 
         function set_bin_duration(self, new_value)
-            self.bin_duration_ = new_value ;
-            [self.bin_edges_, self.bin_centers_] = ...
-                compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
-            self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
-            self.trigger_count_ = 0 ;
-            self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.bin_duration_ = new_value_maybe(1) ;
+                [self.bin_edges_, self.bin_centers_] = ...
+                    compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+                self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for bin_duration') ;
+            end                                
         end
 
         function result = do_center_bin_at_zero(self)
@@ -417,13 +511,19 @@ classdef dromic_model < ws.model
         end
 
         function set_do_center_bin_at_zero(self, new_value)
-            self.do_center_bin_at_zero_ = new_value ;
-            [self.bin_edges_, self.bin_centers_] = ...
-                compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
-            self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
-            self.trigger_count_ = 0 ;
-            self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            self.do_center_bin_at_zero_ = logical_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.bin_duration_ = new_value_maybe(1) ;
+                [self.bin_edges_, self.bin_centers_] = ...
+                    compute_bins(self.pre_trigger_duration_, self.post_trigger_duration_, self.bin_duration_, self.do_center_bin_at_zero_) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+                self.scan_count_after_trigger_ = round(0.001*self.bin_edges_(end)*self.nidq_scan_rate_) ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for do_center_bin_at_zero') ;
+            end                                
         end
 
         function result = timer_period(self)
@@ -431,8 +531,16 @@ classdef dromic_model < ws.model
         end
 
         function set_timer_period(self, new_value)
-            self.timer_period_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.timer_period_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for timer_period') ;
+            end                                            
         end
 
         function result = minimum_time_between_spikes(self)
@@ -440,8 +548,16 @@ classdef dromic_model < ws.model
         end
 
         function set_minimum_time_between_spikes(self, new_value)
-            self.minimum_time_between_spikes_ = new_value ;
+            new_value_maybe = double_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.minimum_time_between_spikes_ = new_value_maybe(1) ;
+                self.event_count_from_bin_index_ = zeros(size(self.bin_centers_)) ;
+                self.trigger_count_ = 0 ;
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for minimum_time_between_spikes') ;
+            end                                            
         end
 
         function result = event_count_from_bin_index(self)
@@ -474,32 +590,16 @@ classdef dromic_model < ws.model
             self.update_() ;
         end  % function
         
-%         function scroll_up(self)
-%             y_limits=self.y_limits_;
-%             y_middle=mean(y_limits);
-%             y_span=diff(y_limits);
-%             y_radius=0.5*y_span;
-%             new_y_limits=(y_middle+0.1*y_span)+y_radius*[-1 +1];
-%             self.y_limits_ = new_y_limits ;
-%             self.update_() ;
-%         end  % function
-%         
-%         function scroll_down(self)
-%             y_limits=self.y_limits_;
-%             y_middle=mean(y_limits);
-%             y_span=diff(y_limits);
-%             y_radius=0.5*y_span;
-%             new_y_limits=(y_middle-0.1*y_span)+y_radius*[-1 +1];
-%             self.y_limits_ = new_y_limits ;
-%             self.update_() ;
-%         end  % function
-
         function set_y_max(self, new_value)
-            if isnumeric(new_value) && isscalar(new_value) && isfinite(new_value) && 0<new_value ,
+            new_value_maybe = double_maybe_from_whatever(new_value, @(x)(isnumeric(x) && isscalar(x) && isfinite(x) && 0<x)) ;
+            if ~isempty(new_value_maybe) ,             
                 self.is_auto_y_ = false ;
-                self.y_max_ = new_value ;
-            end
-            self.update_() ;
+                self.y_max_ = new_value_maybe(1) ;
+            end                
+            self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for y_max') ;
+            end                                            
         end
 
         function update_histogram_(self)
@@ -521,11 +621,17 @@ classdef dromic_model < ws.model
         end
 
         function set_is_auto_y(self, new_value)
-            self.is_auto_y_ = new_value ;
-            if self.is_auto_y_ ,
-                self.sync_y_max_from_event_count_from_bin_index_() ;
-            end
+            new_value_maybe = logical_maybe_from_whatever(new_value) ;
+            if ~isempty(new_value_maybe) ,             
+                self.is_auto_y_ = new_value_maybe(1) ;
+                if self.is_auto_y_ ,
+                    self.sync_y_max_from_event_count_from_bin_index_() ;
+                end
+            end                
             self.update_control_properties_() ;
+            if isempty(new_value_maybe) ,
+                error('ws:invalid_value', 'Invalid value for y_max') ;
+            end                                           
         end
     end  % methods
 end

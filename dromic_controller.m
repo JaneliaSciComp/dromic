@@ -26,6 +26,9 @@ classdef dromic_controller < ws.controller
         monitored_threshold_edit_
         monitored_threshold_edit_units_text_
 
+        monitored_threshold_rising_button_
+        monitored_threshold_falling_button_
+
         pre_trigger_duration_edit_label_text_
         pre_trigger_duration_edit_
         pre_trigger_duration_edit_units_text_
@@ -40,9 +43,7 @@ classdef dromic_controller < ws.controller
         x_axis_label_
         y_axis_label_
         bars_
-%         update_rate_text_label_text_
-%         update_rate_text_
-%         update_rate_text_units_text_
+        clear_button_
         zoom_in_button_
         zoom_out_button_
         y_limits_button_
@@ -103,7 +104,7 @@ classdef dromic_controller < ws.controller
             delete@ws.controller(self) ;
         end  % function
         
-        function update_histogram(self,varargin)
+        function update_histogram(self, varargin)
             % If there are issues with either the host or the model, just return
             if ~self.are_updates_enabled ,
                 return
@@ -302,7 +303,13 @@ classdef dromic_controller < ws.controller
             set(self.monitored_threshold_edit_label_text_, ...
                 'Enable',ws.on_iff(is_idle)) ;
 
-
+            monitored_threshold_crossing_sign = model.monitored_threshold_crossing_sign() ;
+            set(self.monitored_threshold_rising_button_, ...
+                'Value',monitored_threshold_crossing_sign>0, ...
+                'Enable',ws.on_iff(is_idle)) ;
+            set(self.monitored_threshold_falling_button_, ...
+                'Value',monitored_threshold_crossing_sign<0, ...
+                'Enable',ws.on_iff(is_idle)) ;
 
             pre_trigger_duration = model.pre_trigger_duration() ;
             set(self.pre_trigger_duration_edit_label_text_, ...
@@ -362,7 +369,8 @@ classdef dromic_controller < ws.controller
 %             set(self.scroll_up_button_,'Enable',ws.on_iff(~is_auto_y));
 %             set(self.scroll_down_button_,'Enable',ws.on_iff(~is_auto_y));
             set(self.y_limits_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
-%             self.update_histogram();
+            set(self.clear_button_,'Enable',ws.on_iff(is_idle));
+            self.update_histogram();
         end  % method        
                 
     end  % protected methods block
@@ -467,8 +475,18 @@ classdef dromic_controller < ws.controller
                 ws.uicontrol('Parent',self.figure_, ...
                         'Style','text', ...
                         'HorizontalAlignment','left', ...
-                        'String','');
+                        'String','uV');
+            self.monitored_threshold_rising_button_ = ...
+                ws.uicontrol('Parent',self.figure_, ...
+                        'Style','radiobutton', ...
+                        'String','Rising');
+            self.monitored_threshold_falling_button_ = ...
+                ws.uicontrol('Parent',self.figure_, ...
+                        'Style','radiobutton', ...
+                        'String','Falling');
             
+            
+
             % Pre edit
             self.pre_trigger_duration_edit_label_text_= ...
                 ws.uicontrol('Parent',self.figure_, ...
@@ -551,6 +569,10 @@ classdef dromic_controller < ws.controller
 %                         'String','Hz');
                     
             % Y axis control buttons
+            self.clear_button_= ...
+                ws.uicontrol('Parent',self.figure_, ...
+                          'Style','pushbutton', ...
+                          'String','C');
             self.zoom_in_button_= ...
                 ws.uicontrol('Parent',self.figure_, ...
                           'Style','pushbutton', ...
@@ -595,7 +617,7 @@ classdef dromic_controller < ws.controller
             screen_size=screen_position(3:4);
             
             % Position the figure in the middle of the screen
-            initial_size=[720 500];
+            initial_size=[720 600];
             figure_offset=(screen_size-initial_size)/2;
             figure_position=[figure_offset initial_size];
             set(self.figure_,'Position',figure_position);
@@ -639,7 +661,7 @@ classdef dromic_controller < ws.controller
 
             % minimum layout dimensions
             minimum_layout_width = 720 ;  % If the figure gets small, we lay it out as if it was bigger
-            minimum_layout_height = 500 ;  
+            minimum_layout_height = 600 ;  
             
             % Heights of the stacked rectangles that comprise the layout
             top_space_height = 0 ;
@@ -671,6 +693,7 @@ classdef dromic_controller < ws.controller
 %             width_of_auto_yrepeating_indent = 14 ;
             height_between_trigger_bank_rows = 6 ;
             height_between_monitored_bank_rows = 6 ;
+            height_between_radiobuttons = 0 ;            
             height_between_pre_and_post = 26 ;
             width_between_trigger_bank_and_monitored_bank = 20 ;
             width_from_monitor_bank_to_parameters_bank = 14 ;
@@ -688,7 +711,7 @@ classdef dromic_controller < ws.controller
             histogram_axes_top_pad = 5 ;
             tick_length = 5 ;  % in pixels
             from_axes_to_y_range_buttons_width = 6 ;
-            y_range_button_size = 20 ;  % those buttons are square
+            small_button_size = 20 ;  % those buttons are square
             %space_between_scroll_buttons=5;
             space_between_zoom_buttons = 5 ;
             
@@ -857,12 +880,14 @@ classdef dromic_controller < ws.controller
                      monitored_threshold_edit_label_text_width]) ;
 
             % The monitored_device_type edit and its label
-            monitored_bank_common_edit_x= ...
+            monitored_bank_common_x= ...
                 checkbox_bank_x_offset + ...
                 checkbox_bank_width + ...
                 width_from_checkbox_bank_to_trigger_bank + ...
                 trigger_bank_width + ...
-                width_between_trigger_bank_and_monitored_bank + ...                
+                width_between_trigger_bank_and_monitored_bank ;
+            monitored_bank_common_edit_x= ...
+                monitored_bank_common_x + ...
                 widest_monitored_bank_label_width ;
             monitored_device_type_edit_y = top_stuff_top_y_offset - height_from_layout_top_to_monitored_bank - edit_height  ;
             ws.position_edit_label_and_units_bang( ...
@@ -907,12 +932,28 @@ classdef dromic_controller < ws.controller
                 edit_width, ...
                 widest_monitored_bank_label_width) ;
            
-            % Compute the monitored bank width
+            % Compute the monitored bank width (we assume the radiobuttons are not the
+            % widest thing in the bank)
             [monitored_threshold_edit_units_text_width, ~] = ...
                 ws.get_extent(self.monitored_threshold_edit_units_text_) ;            
             monitored_bank_width = ...
                 widest_monitored_bank_label_width + width_from_label_to_edit + edit_width + width_from_edit_to_units + text_width_correction + ...
                 monitored_threshold_edit_units_text_width ;
+
+            % The rising/falling radiobuttons
+            [~, monitored_threshold_rising_button_height] = ...
+                ws.get_extent(self.monitored_threshold_rising_button_) ;            
+            monitored_threshold_rising_button_x = monitored_bank_common_edit_x ;
+            monitored_threshold_rising_button_y = monitored_threshold_edit_y - height_between_monitored_bank_rows - monitored_threshold_rising_button_height ;
+            ws.set_uicontrol_offset_bang(self.monitored_threshold_rising_button_, ...
+                                         [monitored_threshold_rising_button_x monitored_threshold_rising_button_y]) ;
+            [~, monitored_threshold_falling_button_height] = ...
+                ws.get_extent(self.monitored_threshold_falling_button_) ;            
+            monitored_threshold_falling_button_x = monitored_bank_common_edit_x ;
+            monitored_threshold_falling_button_y = ...
+                monitored_threshold_rising_button_y - height_between_radiobuttons - monitored_threshold_falling_button_height ;
+            ws.set_uicontrol_offset_bang(self.monitored_threshold_falling_button_, ...
+                                         [monitored_threshold_falling_button_x monitored_threshold_falling_button_y]) ;
 
 
 
@@ -1025,7 +1066,7 @@ classdef dromic_controller < ws.controller
             % All the stuff above is at a fixed y offset from the top of
             % the layout.  So now we can compute the height of the top
             % stuff rectangle.
-            top_stuff_y_offset = min([auto_y_checkbox_y trigger_channel_bit_index0_edit_y monitored_threshold_edit_y bin_duration_edit_y]) ;
+            top_stuff_y_offset = min([auto_y_checkbox_y trigger_channel_bit_index0_edit_y monitored_threshold_falling_button_y bin_duration_edit_y]) ;
             top_stuff_height = top_stuff_top_y_offset - top_stuff_y_offset ;
                         
                         
@@ -1051,7 +1092,7 @@ classdef dromic_controller < ws.controller
             histogram_axes_y = histogram_axes_area_y + tight_inset(2) ;
             histogram_axes_width = ...
                 histogram_axes_area_width - tight_inset(1) - tight_inset(3) - histogram_axes_left_pad - histogram_axes_right_pad - ...
-                y_range_button_size - from_axes_to_y_range_buttons_width ;
+                small_button_size - from_axes_to_y_range_buttons_width ;
             histogram_axes_height = histogram_axes_area_height - tight_inset(2) - tight_inset(4) - histogram_axes_top_pad ;
             histogram_axes_position = [histogram_axes_x histogram_axes_y histogram_axes_width histogram_axes_height] ;
             set(self.histogram_axes_, 'Position', histogram_axes_position) ;
@@ -1068,24 +1109,31 @@ classdef dromic_controller < ws.controller
             set(self.histogram_axes_, 'TickLength', tick_length_relative*[1 1]) ;
             
             % the zoom buttons
-            y_range_buttons_x=histogram_axes_x+histogram_axes_width+from_axes_to_y_range_buttons_width;
-            zoom_out_button_x=y_range_buttons_x;
+            small_buttons_x=histogram_axes_x+histogram_axes_width+from_axes_to_y_range_buttons_width;
+            zoom_out_button_x=small_buttons_x;
             zoom_out_button_y=histogram_axes_y;  % want bottom-aligned with axes
             set(self.zoom_out_button_, ...
                 'Position',[zoom_out_button_x zoom_out_button_y ...
-                            y_range_button_size y_range_button_size]);
-            zoom_in_button_x=y_range_buttons_x;
-            zoom_in_button_y=zoom_out_button_y+y_range_button_size+space_between_zoom_buttons;  % want just above other zoom button
+                            small_button_size small_button_size]);
+            zoom_in_button_x=small_buttons_x;
+            zoom_in_button_y=zoom_out_button_y+small_button_size+space_between_zoom_buttons;  % want just above other zoom button
             set(self.zoom_in_button_, ...
                 'Position',[zoom_in_button_x zoom_in_button_y ...
-                            y_range_button_size y_range_button_size]);
+                            small_button_size small_button_size]);
             
             % the y limits button
-            y_limits_button_x=y_range_buttons_x;
-            y_limits_button_y=zoom_in_button_y+y_range_button_size+space_between_zoom_buttons;  % want above other zoom buttons
+            y_limits_button_x=small_buttons_x;
+            y_limits_button_y=zoom_in_button_y+small_button_size+space_between_zoom_buttons;  % want above other zoom buttons
             set(self.y_limits_button_, ...
                 'Position',[y_limits_button_x y_limits_button_y ...
-                            y_range_button_size y_range_button_size]);
+                            small_button_size small_button_size]);
+
+            % the clear button
+            clear_button_x = small_buttons_x;
+            clear_button_y = histogram_axes_y + histogram_axes_height - small_button_size ;            
+            set(self.clear_button_, ...
+                'Position',[clear_button_x clear_button_y ...
+                            small_button_size small_button_size]);
             
 %             % the scroll buttons
 %             scroll_up_button_x=y_range_buttons_x;
@@ -1285,22 +1333,34 @@ classdef dromic_controller < ws.controller
 %             self.model_.do('set_is_auto_y_repeating', new_value) ;
 %         end
         
-        function pre_trigger_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
-            value_as_string = get(self.pre_trigger_duration_edit_,'String') ;
-            value = str2double(value_as_string) ;
-            self.model_.do('set_pre_trigger_duration', value) ;
-        end
+%         function pre_trigger_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
+%             value_as_string = get(self.pre_trigger_duration_edit_,'String') ;
+%             value = str2double(value_as_string) ;
+%             self.model_.do('set_pre_trigger_duration', value) ;
+%         end
         
-        function post_trigger_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
-            value_as_string = get(self.post_trigger_duration_edit_,'String') ;
-            value = str2double(value_as_string) ;
-            self.model_.do('set_post_trigger_duration', value) ;
-        end
+%         function post_trigger_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
+%             value_as_string = get(self.post_trigger_duration_edit_,'String') ;
+%             value = str2double(value_as_string) ;
+%             self.model_.do('set_post_trigger_duration', value) ;
+%         end
+%         
+%         function bin_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
+%             value_as_string = get(self.bin_duration_edit_,'String') ;
+%             value = str2double(value_as_string) ;
+%             self.model_.do('set_bin_duration', value) ;
+%         end
         
-        function bin_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
-            value_as_string = get(self.bin_duration_edit_,'String') ;
-            value = str2double(value_as_string) ;
-            self.model_.do('set_bin_duration', value) ;
+        function monitored_threshold_rising_button_actuated(self, source, event, varargin)  %#ok<INUSD>
+            self.model_.do('set_monitored_threshold_crossing_sign', +1) ;
+        end
+
+        function monitored_threshold_falling_button_actuated(self, source, event, varargin)  %#ok<INUSD>
+            self.model_.do('set_monitored_threshold_crossing_sign', -1) ;
+        end
+
+        function clear_button_actuated(self, source, event, varargin)  %#ok<INUSD>
+            self.model_.do('clear') ;
         end
         
         function zoom_in_button_actuated(self, source, event, varargin)  %#ok<INUSD>

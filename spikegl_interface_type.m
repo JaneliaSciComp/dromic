@@ -57,5 +57,8 @@ classdef spikegl_interface_type < handle
                                                         channel_index0) ;
         end
 
+        function result = GetStreamI16ToVolts(self, monitored_device_type, monitored_device_index0, monitored_channel_index0) 
+            result = GetStreamI16ToVolts(self.spikegl_, monitored_device_type, monitored_device_index0, monitored_channel_index0) ;
+        end
     end
 end

@@ -79,10 +79,14 @@ classdef fake_spikegl_interface_type < handle
                 % just have the signal blip from zero to 10,000 counts.
                 is_odd = mod(floor(t/1),2) ;  % Whether it's been an even or odd number of seconds since the start
                 is_even = 1-is_odd ;                
-                data = int16(1e4*(mod(t-is_odd*0.025-is_even*0.055,1)<0.05)) ;  % Have it blip high from 50 ms.  On odd/even cycles, 250/500 ms after the trigger.
+                %data = int16(1e4*(mod(t-0.010,1)<0.005)) ;  % Have it blip high for 5 ms, 10 ms after trigger
+                data = int16(1e4*(mod(t-is_odd*0.025-is_even*0.055,1)<0.005)) ;  % Have it blip high for 5 ms.  On odd/even cycles, 25/55 ms after the trigger.                
             end
             first_scan_index0_check = first_scan_index0 ;
         end
 
+        function result = GetStreamI16ToVolts(self, monitored_device_type, monitored_device_index0, monitored_channel_index0)  %#ok<INUSD> 
+            result = 2e-6 ;  % round number close to an actual real value
+        end        
     end
 end
