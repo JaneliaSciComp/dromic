@@ -43,6 +43,12 @@ classdef fake_spikegl_interface_type < handle
                            first_scan_index0, ...
                            scan_count, ...
                            channel_index0) ;
+            if first_scan_index0_check ~= first_scan_index0 ,
+                error('fake_spikegl_interface_type:internal_error', ...
+                      'Internal error in fake_spikegl_interface_type: The first scan index (%d) does not equal the requested first scan index (%d', ...
+                      first_scan_index0_check, ...
+                      first_scan_index0) ;
+            end
         end
 
         function output_scan_index0 = MapSample(self, output_device_type, output_device_index0, input_scan_index0, input_device_type, input_device_index0)
@@ -75,12 +81,15 @@ classdef fake_spikegl_interface_type < handle
                 bit = mod(t,1)<0.5 ;
                 data = int16(bit) ;
             else
-                % If imec, still int16, but I'm not sure how they handle units.  I guess we'll 
-                % just have the signal blip from zero to 10,000 counts.
+                % If imec, still int16, but want to have a realistic scale
+                volts_per_count = 2e-6 ;  % V (this must agree with result in GetStreamI16ToVolts()
+                blip_magnitude_in_volts = -200e-6 ;  % V, want it negative-going
+                blip_magnitude_in_counts = blip_magnitude_in_volts / volts_per_count ;  % counts
                 is_odd = mod(floor(t/1),2) ;  % Whether it's been an even or odd number of seconds since the start
                 is_even = 1-is_odd ;                
                 %data = int16(1e4*(mod(t-0.010,1)<0.005)) ;  % Have it blip high for 5 ms, 10 ms after trigger
-                data = int16(1e4*(mod(t-is_odd*0.025-is_even*0.055,1)<0.005)) ;  % Have it blip high for 5 ms.  On odd/even cycles, 25/55 ms after the trigger.                
+                data = int16(blip_magnitude_in_counts*(mod(t-is_odd*0.025-is_even*0.055,1)<0.005)) ;  
+                  % Have it blip high for 5 ms.  On odd/even cycles, 25/55 ms after the trigger.                
             end
             first_scan_index0_check = first_scan_index0 ;
         end
@@ -90,3 +99,4 @@ classdef fake_spikegl_interface_type < handle
         end        
     end
 end
+

@@ -7,9 +7,9 @@ classdef dromic_model < ws.model
         monitored_device_type_ = device_type_type.imec
         monitored_device_index0_ = 0
         monitored_channel_index0_ = 0  % assumed to be an imec channel
-        monitored_threshold_ = 0  % uV
+        monitored_threshold_ = -100  % uV
         monitored_threshold_in_counts_
-        monitored_threshold_crossing_sign_ = +1  % either +1 (rising) or -1 (falling)
+        monitored_threshold_crossing_sign_ = -1  % either +1 (rising) or -1 (falling)
         pre_trigger_duration_ = 100  % ms
         post_trigger_duration_ = 100 % ms
         bin_duration_ = 10  % ms
