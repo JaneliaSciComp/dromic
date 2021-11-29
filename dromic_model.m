@@ -243,7 +243,7 @@ classdef dromic_model < ws.model
                             -inf, ...
                             +inf) ;
                         peri_timestamp_from_spike_index = peri_timestamp_from_imec_window_scan_index(is_spike_from_window_imec_scan_index) ;
-                        spike_count_for_this_trigger_from_bin_index = histcounts(peri_timestamp_from_spike_index, self.bin_edges_) ;
+                        spike_count_for_this_trigger_from_bin_index = histcounts(peri_timestamp_from_spike_index, self.bin_edges_) 
                         %max_spike_count_per_bin_for_this_trigger = max(spike_count_for_this_trigger_from_bin_index)
                         self.event_count_from_bin_index_ = self.event_count_from_bin_index_ + spike_count_for_this_trigger_from_bin_index ;
                         self.trigger_count_ = self.trigger_count_ + 1 ;   

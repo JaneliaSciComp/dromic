@@ -75,22 +75,42 @@ classdef fake_spikegl_interface_type < handle
             dt = 1 / fs ;
             t = dt * ( (first_scan_index0:last_scan_index0)' + 1/2 ) ;  % seconds, col vector, 1/2 is to make sampling less likely to land on an edge
             
+%             % Good signals for demoing
+%             if device_type == device_type_type.nidq ,
+%                 % If nidq, result should be a int16 that represents a uint16, with the
+%                 % lowest-order bit executing a 1 Hz square wave with 50% duty cycle.
+%                 bit = mod(t,1)<0.5 ;
+%                 data = int16(bit) ;
+%             else
+%                 % If imec, still int16, but want to have a realistic scale
+%                 volts_per_count = 2e-6 ;  % V (this must agree with result in GetStreamI16ToVolts()
+%                 blip_magnitude_in_volts = -200e-6 ;  % V, want it negative-going
+%                 blip_magnitude_in_counts = blip_magnitude_in_volts / volts_per_count ;  % counts
+%                 is_odd = mod(floor(t/1),2) ;  % Whether it's been an even or odd number of seconds since the start
+%                 is_even = 1-is_odd ;                
+%                 %data = int16(1e4*(mod(t-0.010,1)<0.005)) ;  % Have it blip high for 5 ms, 10 ms after trigger
+%                 data = int16(blip_magnitude_in_counts*(mod(t-is_odd*0.025-is_even*0.055,1)<0.005)) ;  
+%                   % Have it blip high for 5 ms.  On odd/even cycles, 25/55 ms after the trigger.                
+%             end
+
+            % Trying to repro bug
+            T = 0.5 ;  % seconds, period            
             if device_type == device_type_type.nidq ,
                 % If nidq, result should be a int16 that represents a uint16, with the
-                % lowest-order bit executing a 1 Hz square wave with 50% duty cycle.
-                bit = mod(t,1)<0.5 ;
+                % lowest-order bit executing a 2 Hz square wave with 50% duty cycle.
+                bit = mod(t,T)/T < 0.5 ;
                 data = int16(bit) ;
             else
                 % If imec, still int16, but want to have a realistic scale
                 volts_per_count = 2e-6 ;  % V (this must agree with result in GetStreamI16ToVolts()
                 blip_magnitude_in_volts = -200e-6 ;  % V, want it negative-going
                 blip_magnitude_in_counts = blip_magnitude_in_volts / volts_per_count ;  % counts
-                is_odd = mod(floor(t/1),2) ;  % Whether it's been an even or odd number of seconds since the start
-                is_even = 1-is_odd ;                
-                %data = int16(1e4*(mod(t-0.010,1)<0.005)) ;  % Have it blip high for 5 ms, 10 ms after trigger
-                data = int16(blip_magnitude_in_counts*(mod(t-is_odd*0.025-is_even*0.055,1)<0.005)) ;  
+                bit = mod(t-0.010,T)/T < 0.5 ;  % delay by 10 ms
+                data = int16(blip_magnitude_in_counts*bit) ;  
                   % Have it blip high for 5 ms.  On odd/even cycles, 25/55 ms after the trigger.                
             end
+            
+            
             first_scan_index0_check = first_scan_index0 ;
         end
 
