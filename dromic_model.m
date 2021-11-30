@@ -84,6 +84,7 @@ classdef dromic_model < ws.model
         end
 
         function start(self)
+            self.nidq_scan_index_from_unplotted_trigger_index_ = zeros(0,1) ;
             self.carryover_nidq_scan_index_ = -inf ;
             self.carryover_trigger_value_ = true ;  % this prevents a false-positive trigger at the start
             self.is_running_ = true ;
@@ -222,13 +223,14 @@ classdef dromic_model < ws.model
                         imec_window_start_in_scans = trigger_imec_scan_index + imec_window_start_offset_in_scans ;
                         imec_window_end_in_scans = trigger_imec_scan_index + imec_window_end_offset_in_scans ;
                         imec_window_scan_count = imec_window_end_in_scans - imec_window_start_in_scans + 1 ;
-                        [imec_data_from_window_imec_scan_index, imec_window_scan_count_check] = Fetch( ...
+                        imec_data_from_window_imec_scan_index = Fetch( ...
                             self.spikegl_interface_, ...
                             device_type_type.imec, ...
                             self.monitored_device_index0, ...
                             imec_window_start_in_scans, ...
                             imec_window_scan_count, ...
                             self.monitored_channel_index0) ;
+                        imec_window_scan_count_check = size(imec_data_from_window_imec_scan_index, 1) ;
                         if imec_window_scan_count_check < imec_window_scan_count ,
                             % The trigger must be too recent to accommodate the post-trigger duration
                             continue
@@ -243,7 +245,7 @@ classdef dromic_model < ws.model
                             -inf, ...
                             +inf) ;
                         peri_timestamp_from_spike_index = peri_timestamp_from_imec_window_scan_index(is_spike_from_window_imec_scan_index) ;
-                        spike_count_for_this_trigger_from_bin_index = histcounts(peri_timestamp_from_spike_index, self.bin_edges_) 
+                        spike_count_for_this_trigger_from_bin_index = histcounts(peri_timestamp_from_spike_index, self.bin_edges_) ;
                         %max_spike_count_per_bin_for_this_trigger = max(spike_count_for_this_trigger_from_bin_index)
                         self.event_count_from_bin_index_ = self.event_count_from_bin_index_ + spike_count_for_this_trigger_from_bin_index ;
                         self.trigger_count_ = self.trigger_count_ + 1 ;   
