@@ -39,10 +39,14 @@ classdef dromic_controller < ws.controller
         bin_duration_edit_
         bin_duration_edit_units_text_
 
-        histogram_axes_
+        heatmap_axes_
         x_axis_label_
         y_axis_label_
         bars_
+        
+        colorbar_axes_
+        colorbar_
+        
         clear_button_
         zoom_in_button_
         zoom_out_button_
@@ -121,7 +125,7 @@ classdef dromic_controller < ws.controller
             bin_centers = model.bin_centers() ;
             if isempty(self.bars_) ,
                 self.bars_ = matlab.graphics.chart.primitive.Bar( ...
-                    'Parent', self.histogram_axes_, ...
+                    'Parent', self.heatmap_axes_, ...
                     'XData', bin_centers, ...
                     'YData', event_count_from_bin_index, ...
                     'EdgeColor', 'none', ...
@@ -133,9 +137,9 @@ classdef dromic_controller < ws.controller
             % If "Auto Y" is engaged, set the y range
             if model.is_running() && model.is_auto_y() ,   %&& testPulser.AreYLimitsForRunDetermined ,
                 y_max = model.y_max() ;
-                ylim = get(self.histogram_axes_, 'YLim') ;
+                ylim = get(self.heatmap_axes_, 'YLim') ;
                 if ylim(2) ~= y_max ,
-                    set(self.histogram_axes_, 'YLim', [0 y_max]) ;
+                    set(self.heatmap_axes_, 'YLim', [0 y_max]) ;
                 end
             end
             
@@ -355,10 +359,10 @@ classdef dromic_controller < ws.controller
 %                 set(self.gain_units_texts_(i),'String','');
 %             end
 %             sweep_duration = 2*model.test_pulse_duration ;
-%             set(self.histogram_axes_,'XLim',1000*[0 sweep_duration]);
+%             set(self.heatmap_axes_,'XLim',1000*[0 sweep_duration]);
             y_max = model.y_max() ;
-            set(self.histogram_axes_,'YLim',[0 y_max]) ;
-            set(self.histogram_axes_,'XLim',[-pre_trigger_duration +post_trigger_duration]) ;
+            set(self.heatmap_axes_,'YLim',[0 y_max]) ;
+            set(self.heatmap_axes_,'XLim',[-pre_trigger_duration +post_trigger_duration]) ;
             
 %             set(self.y_axis_label_,'String',sprintf('Monitor (%s)',model.get_test_pulse_electrode_monitor_units()));
 %             t = model.get_test_pulse_monitor_histogram_timeline() ;
@@ -532,8 +536,8 @@ classdef dromic_controller < ws.controller
                         'HorizontalAlignment','left', ...
                         'String','ms');
 
-            % Histogram axes        
-            self.histogram_axes_ = ...
+            % Heatmap axes        
+            self.heatmap_axes_ = ...
                 axes('Parent',self.figure_, ...
                      'Units','pixels', ...
                      'box','on', ...
@@ -545,12 +549,27 @@ classdef dromic_controller < ws.controller
             
             % Axis labels
             self.x_axis_label_ = ...
-                xlabel(self.histogram_axes_,'Time (ms)','FontSize',9,'Interpreter','none') ;
+                xlabel(self.heatmap_axes_,'Time (ms)','FontSize',9,'Interpreter','none') ;
             self.y_axis_label_ = ...
-                ylabel(self.histogram_axes_,'Event Count','FontSize',9,'Interpreter','none') ;
+                ylabel(self.heatmap_axes_,'Event Count','FontSize',9,'Interpreter','none') ;
             
             % Histogram bars
             self.bars_ = [] ;
+            
+            % Colorbar axes and the colorbar image
+            self.colorbar_axes_ = ...
+                axes('Parent', self.figure_, ...
+                     'Units', 'pixels', ...
+                     'Visible', 'on', ...
+                     'Box', 'on', ...
+                     'XLim', [0.5 1.5], ...
+                     'XTick', [], ...
+                     'YAxisLocation', 'right', ...
+                     'Layer', 'top') ; 
+            self.colorbar_ = ...
+                image('Parent', self.colorbar_axes_,...
+                      'CData', (0:255)',...
+                      'XData', [1 1]) ;  
             
 %             % Update rate text
 %             self.update_rate_text_label_text_= ...
@@ -663,17 +682,12 @@ classdef dromic_controller < ws.controller
             minimum_layout_width = 720 ;  % If the figure gets small, we lay it out as if it was bigger
             minimum_layout_height = 600 ;  
             
-            % Heights of the stacked rectangles that comprise the layout
-            top_space_height = 0 ;
-            % we don't know the height of the top stuff yet, but it does
-            % not depend on the figure/layout size
-            top_stuff_to_histogram_plot_interspace_height = 3 ;
-            % histograms plot height is set to fill leftover space in the
-            % layout
-            bottom_space_height = 8 ;
-            % we don't know the height of the bottom stuff yet, but it does
-            % not depend on the figure/layout size            
-%             bottom_space_height = 2 ;
+            % The layout consists of "top stuff", including the start button, the
+            % parameter edits, and the rising/falling radiobuttons; and "bottom stuff",
+            % including the heatmap, the colorbar, and the small buttons along the
+            % right side.
+            top_stuff_to_bottom_stuff_space_height = 3 ;
+            layout_bottom_to_bottom_stuff_space_height = 8 ;
             
             % General widget sizes
             edit_width = 40 ;
@@ -704,13 +718,14 @@ classdef dromic_controller < ws.controller
             height_from_layout_top_to_parameters_bank = 6 ;
 
             % Histogram plot layout parameters                      
-            width_from_layout_left_to_plot = 0 ;
-            width_from_layout_right_to_plot = 0 ;            
-            histogram_axes_left_pad = 8 ;
-            histogram_axes_right_pad = 3 ;
-            histogram_axes_top_pad = 5 ;
+            heatmap_axes_left_pad = 8 ;
+            heatmap_to_colorbar_space_width = 3 ;
+            colorbar_label_area_width = 30 ;
+            colorbar_axes_width = 30 ;
+            
+            heatmap_axes_top_pad = 5 ;
             tick_length = 5 ;  % in pixels
-            from_axes_to_y_range_buttons_width = 6 ;
+            from_colorbar_to_small_buttons_width = 6 ;
             small_button_size = 20 ;  % those buttons are square
             %space_between_scroll_buttons=5;
             space_between_zoom_buttons = 5 ;
@@ -718,10 +733,6 @@ classdef dromic_controller < ws.controller
             width_from_label_to_edit=4;  % has to agree with value in ws.position_edit_label_and_units_bang()
             width_from_edit_to_units=3;  % has to agree with value in ws.position_edit_label_and_units_bang()
             text_width_correction = 2 ;  % added to text X extent to get width    % has to agree with value in ws.position_edit_label_and_units_bang()    
-            
-%             % Bottom stuff layout parameters
-%             width_from_layout_left_to_update_rate_left=20;  
-%             update_rate_text_width=36;  % wide enough to accomodate '100.0'
             
             % Get the dimensions of the figure, determine the size and
             % position of the layout rectangle
@@ -752,7 +763,7 @@ classdef dromic_controller < ws.controller
             %
             
             % The start/stop button
-            top_stuff_top_y_offset = layout_top_y_offset - top_space_height ;
+            top_stuff_top_y_offset = layout_top_y_offset ;
             start_stop_button_x = width_from_top_stuff_left_to_start_stop_button ;
             start_stop_button_y = top_stuff_top_y_offset - height_from_top_stuff_top_to_start_stop_button - start_stop_button_height ;
             set(self.start_stop_button_, ...
@@ -1068,50 +1079,67 @@ classdef dromic_controller < ws.controller
             % stuff rectangle.
             top_stuff_y_offset = min([auto_y_checkbox_y trigger_channel_bit_index0_edit_y monitored_threshold_falling_button_y bin_duration_edit_y]) ;
             top_stuff_height = top_stuff_top_y_offset - top_stuff_y_offset ;
-                        
-                        
-            %
-            % The histogram axes
-            %
-            histogram_axes_area_x = width_from_layout_left_to_plot ;
-            histogram_axes_area_width = ...
-                layout_width - width_from_layout_left_to_plot - width_from_layout_right_to_plot ;
-            histogram_axes_area_height = ...
-                layout_height - ...
-                top_space_height - ...
-                top_stuff_height - ...
-                top_stuff_to_histogram_plot_interspace_height - ...
-                bottom_space_height ;
-            histogram_axes_area_top_y = layout_top_y_offset - top_space_height - top_stuff_height - top_stuff_to_histogram_plot_interspace_height ;
-            histogram_axes_area_y = histogram_axes_area_top_y - histogram_axes_area_height ;
-            histogram_axes_outer_position = [histogram_axes_area_x histogram_axes_area_y histogram_axes_area_width histogram_axes_area_height] ;
-            set(self.histogram_axes_, 'OuterPosition', histogram_axes_outer_position) ;
 
-            tight_inset = round(get(self.histogram_axes_,'TightInset')) ;  % TightInset is sometimes non-integer in pixels (??)
-            histogram_axes_x = histogram_axes_area_x + tight_inset(1) + histogram_axes_left_pad;
-            histogram_axes_y = histogram_axes_area_y + tight_inset(2) ;
-            histogram_axes_width = ...
-                histogram_axes_area_width - tight_inset(1) - tight_inset(3) - histogram_axes_left_pad - histogram_axes_right_pad - ...
-                small_button_size - from_axes_to_y_range_buttons_width ;
-            histogram_axes_height = histogram_axes_area_height - tight_inset(2) - tight_inset(4) - histogram_axes_top_pad ;
-            histogram_axes_position = [histogram_axes_x histogram_axes_y histogram_axes_width histogram_axes_height] ;
-            set(self.histogram_axes_, 'Position', histogram_axes_position) ;
+            % Position of the "bottom stuff" area, which includes the heatmap, the
+            % colorbar, and the small buttons along the right
+            bottom_stuff_area_x = 0 ;
+            bottom_stuff_area_y = layout_bottom_to_bottom_stuff_space_height ;
+            bottom_stuff_area_width = layout_width ;
+            bottom_stuff_area_height = ...
+                layout_height - ...
+                bottom_stuff_area_y - ...
+                top_stuff_height - ...
+                top_stuff_to_bottom_stuff_space_height ;
             
-%             histogram_axes_position = get(self.histogram_axes_, 'Position') ;
-%             histogram_axes_x = histogram_axes_position(1) ;
-%             histogram_axes_y = histogram_axes_position(2)  ;
-%             histogram_axes_width = histogram_axes_position(3)  ;
-%             histogram_axes_height = histogram_axes_position(4)  ;
+                        
+            %
+            % The heatmap axes
+            %
+            
+            heatmap_axes_outer_position_x = bottom_stuff_area_x ;
+            heatmap_axes_outer_position_y = bottom_stuff_area_y ;
+            heatmap_axes_outer_position_width = ...
+                bottom_stuff_area_width - ...
+                (small_button_size + from_colorbar_to_small_buttons_width + colorbar_axes_width + ...
+                 colorbar_label_area_width + from_colorbar_to_small_buttons_width) ;
+            heatmap_axes_outer_position_height = bottom_stuff_area_height ;
+            heatmap_axes_outer_position = ...
+                [heatmap_axes_outer_position_x heatmap_axes_outer_position_y heatmap_axes_outer_position_width heatmap_axes_outer_position_height] ;
+            set(self.heatmap_axes_, 'OuterPosition', heatmap_axes_outer_position) ;
+
+            tight_inset = round(get(self.heatmap_axes_,'TightInset')) ;  % TightInset is sometimes non-integer in pixels (??)
+            heatmap_axes_x = heatmap_axes_outer_position_x + tight_inset(1) + heatmap_axes_left_pad;
+            heatmap_axes_y = heatmap_axes_outer_position_y + tight_inset(2) ;
+            heatmap_axes_width = ...
+                heatmap_axes_outer_position_width - tight_inset(1) - tight_inset(3) ;
+            heatmap_axes_height = heatmap_axes_outer_position_height - tight_inset(2) - tight_inset(4) - heatmap_axes_top_pad ;
+            heatmap_axes_position = [heatmap_axes_x heatmap_axes_y heatmap_axes_width heatmap_axes_height] ;
+            set(self.heatmap_axes_, 'Position', heatmap_axes_position) ;
+            
+%             heatmap_axes_position = get(self.heatmap_axes_, 'Position') ;
+%             heatmap_axes_x = heatmap_axes_position(1) ;
+%             heatmap_axes_y = heatmap_axes_position(2)  ;
+%             heatmap_axes_width = heatmap_axes_position(3)  ;
+%             heatmap_axes_height = heatmap_axes_position(4)  ;
 
             % set the axes tick length to keep a constant number of pels
-            histogram_axes_size = max([histogram_axes_width histogram_axes_height]) ;
-            tick_length_relative=tick_length / histogram_axes_size ;
-            set(self.histogram_axes_, 'TickLength', tick_length_relative*[1 1]) ;
+            heatmap_axes_size = max([heatmap_axes_width heatmap_axes_height]) ;
+            tick_length_relative=tick_length / heatmap_axes_size ;
+            set(self.heatmap_axes_, 'TickLength', tick_length_relative*[1 1]) ;
+            
+            % The colorbar axes
+            colorbar_axes_x = heatmap_axes_outer_position_x + heatmap_axes_outer_position_width + heatmap_to_colorbar_space_width ;
+            colorbar_axes_y = heatmap_axes_y ; 
+            colorbar_axes_height = heatmap_axes_height ;
+            colorbar_axes_position = [colorbar_axes_x colorbar_axes_y colorbar_axes_width colorbar_axes_height] ;
+            set(self.colorbar_axes_, 'Position', colorbar_axes_position) ;
             
             % the zoom buttons
-            small_buttons_x=histogram_axes_x+histogram_axes_width+from_axes_to_y_range_buttons_width;
+            small_buttons_x = ...
+                heatmap_axes_x + heatmap_axes_width + from_colorbar_to_small_buttons_width + ...
+                colorbar_axes_width + colorbar_label_area_width + from_colorbar_to_small_buttons_width ;
             zoom_out_button_x=small_buttons_x;
-            zoom_out_button_y=histogram_axes_y;  % want bottom-aligned with axes
+            zoom_out_button_y=heatmap_axes_y;  % want bottom-aligned with axes
             set(self.zoom_out_button_, ...
                 'Position',[zoom_out_button_x zoom_out_button_y ...
                             small_button_size small_button_size]);
@@ -1130,14 +1158,14 @@ classdef dromic_controller < ws.controller
 
             % the clear button
             clear_button_x = small_buttons_x;
-            clear_button_y = histogram_axes_y + histogram_axes_height - small_button_size ;            
+            clear_button_y = heatmap_axes_y + heatmap_axes_height - small_button_size ;            
             set(self.clear_button_, ...
                 'Position',[clear_button_x clear_button_y ...
                             small_button_size small_button_size]);
             
 %             % the scroll buttons
 %             scroll_up_button_x=y_range_buttons_x;
-%             scroll_up_button_y=histogram_axes_y+histogram_axes_height-y_range_button_size;  % want top-aligned with axes
+%             scroll_up_button_y=heatmap_axes_y+heatmap_axes_height-y_range_button_size;  % want top-aligned with axes
 %             set(self.scroll_up_button_, ...
 %                 'Position',[scroll_up_button_x scroll_up_button_y ...
 %                             y_range_button_size y_range_button_size]);
