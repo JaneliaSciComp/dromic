@@ -42,7 +42,7 @@ classdef dromic_controller < ws.controller
         heatmap_axes_
         x_axis_label_
         y_axis_label_
-        bars_
+        heatmap_  % an image
         
         colorbar_axes_
         colorbar_
@@ -108,7 +108,7 @@ classdef dromic_controller < ws.controller
             delete@ws.controller(self) ;
         end  % function
         
-        function update_histogram(self, varargin)
+        function update_heatmap(self, varargin)
             % If there are issues with either the host or the model, just return
             if ~self.are_updates_enabled ,
                 return
@@ -121,26 +121,35 @@ classdef dromic_controller < ws.controller
             model = self.model_ ;
 
             % Update the histogram
-            event_count_from_bin_index = model.event_count_from_bin_index() ;
+            event_count_from_bin_index = model.event_count_from_bin_index() 
             bin_centers = model.bin_centers() ;
-            if isempty(self.bars_) ,
-                self.bars_ = matlab.graphics.chart.primitive.Bar( ...
+            channel_count = size(event_count_from_bin_index, 1) ;
+            if isempty(self.heatmap_) ,
+                self.heatmap_ = image( ...
                     'Parent', self.heatmap_axes_, ...
+                    'CDataMapping', 'scaled', ...
                     'XData', bin_centers, ...
-                    'YData', event_count_from_bin_index, ...
-                    'EdgeColor', 'none', ...
-                    'FaceColor', 'k') ;
+                    'YData', 1:channel_count, ...
+                    'CData', event_count_from_bin_index) ;
             else
-                set(self.bars_, 'XData', bin_centers, 'YData', event_count_from_bin_index) ;
+                set(self.heatmap_, ...
+                    'XData', bin_centers, ...
+                    'YData', 1:channel_count, ...
+                    'CData', event_count_from_bin_index) ;
             end
 
             % If "Auto Y" is engaged, set the y range
-            if model.is_running() && model.is_auto_y() ,   %&& testPulser.AreYLimitsForRunDetermined ,
+            if model.is_running() && model.is_auto_y() , 
                 y_max = model.y_max() ;
-                ylim = get(self.heatmap_axes_, 'YLim') ;
+                ylim = get(self.colorbar_axes_, 'YLim') ;
                 if ylim(2) ~= y_max ,
-                    set(self.heatmap_axes_, 'YLim', [0 y_max]) ;
+                    set(self.colorbar_axes_, 'YLim', [0 y_max]) ;
                 end
+                y_data = get(self.colorbar_, 'YData') ;
+                if y_data(2) ~= y_max ,
+                    set(self.colorbar_, 'YData', [0 y_max]) ;
+                end
+                
             end
             
         end  % method
@@ -361,8 +370,13 @@ classdef dromic_controller < ws.controller
 %             sweep_duration = 2*model.test_pulse_duration ;
 %             set(self.heatmap_axes_,'XLim',1000*[0 sweep_duration]);
             y_max = model.y_max() ;
-            set(self.heatmap_axes_,'YLim',[0 y_max]) ;
+            set(self.heatmap_axes_,'CLim',[0 y_max]) ;
             set(self.heatmap_axes_,'XLim',[-pre_trigger_duration +post_trigger_duration]) ;
+            
+            % Update the colorbar
+            y_max = model.y_max() ;
+            set(self.colorbar_axes_, 'YLim', [0 y_max]) ;
+            set(self.colorbar_, 'YData', [0 y_max]) ;
             
 %             set(self.y_axis_label_,'String',sprintf('Monitor (%s)',model.get_test_pulse_electrode_monitor_units()));
 %             t = model.get_test_pulse_monitor_histogram_timeline() ;
@@ -374,7 +388,7 @@ classdef dromic_controller < ws.controller
 %             set(self.scroll_down_button_,'Enable',ws.on_iff(~is_auto_y));
             set(self.y_limits_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
             set(self.clear_button_,'Enable',ws.on_iff(is_idle));
-            self.update_histogram();
+            self.update_heatmap();
         end  % method        
                 
     end  % protected methods block
@@ -540,23 +554,31 @@ classdef dromic_controller < ws.controller
             self.heatmap_axes_ = ...
                 axes('Parent',self.figure_, ...
                      'Units','pixels', ...
-                     'box','on', ...
+                     'Box','on', ...
+                     'Layer', 'top', ...
                      'XLim',[-100 +100], ...
-                     'YLim',[0 10], ...
+                     'YLim',[0.5 1.5], ...
+                     'YTick', 1, ...
                      'FontSize', 9, ...
                      'Visible','on' ) ;
 %                      'PositionConstraint', 'outerposition');
             
-            % Axis labels
+            % X-axis label
             self.x_axis_label_ = ...
                 xlabel(self.heatmap_axes_,'Time (ms)','FontSize',9,'Interpreter','none') ;
-            self.y_axis_label_ = ...
-                ylabel(self.heatmap_axes_,'Event Count','FontSize',9,'Interpreter','none') ;
             
-            % Histogram bars
-            self.bars_ = [] ;
+            % Heatmap image
+            event_count_from_bin_index = self.model_.event_count_from_bin_index() ;
+            bin_centers = self.model_.bin_centers() ;
+            channel_count = size(event_count_from_bin_index, 1) ;
+            self.heatmap_ = image('Parent', self.heatmap_axes_, ...
+                                  'CDataMapping', 'scaled', ...
+                                  'XData', bin_centers, ...
+                                  'YData', 1:channel_count, ...
+                                  'CData', event_count_from_bin_index) ;
             
             % Colorbar axes and the colorbar image
+            y_max = self.model_.y_max() ;            
             self.colorbar_axes_ = ...
                 axes('Parent', self.figure_, ...
                      'Units', 'pixels', ...
@@ -568,9 +590,15 @@ classdef dromic_controller < ws.controller
                      'Layer', 'top') ; 
             self.colorbar_ = ...
                 image('Parent', self.colorbar_axes_,...
-                      'CData', (0:255)',...
-                      'XData', [1 1]) ;  
-            
+                      'CDataMapping', 'scaled', ...
+                      'CData', linspace(0, y_max, 256)', ...
+                      'XData', [1 1], ...
+                      'YData', [0 y_max]) ;  
+
+            % Y-axis label
+            self.y_axis_label_ = ...
+                ylabel(self.colorbar_axes_,'Event Count','FontSize',9,'Interpreter','none') ;
+                  
 %             % Update rate text
 %             self.update_rate_text_label_text_= ...
 %                 ws.uicontrol('Parent',self.figure_, ...

@@ -273,7 +273,7 @@ classdef dromic_model < ws.model
 %             self.is_first_tick_after_start_ = false ;
 
             % Message the controller to update, if there is a controller
-            self.update_histogram_() ;
+            self.update_heatmap_() ;
         end  % method
 
         function sync_y_max_from_event_count_from_bin_index_(self)
@@ -604,9 +604,9 @@ classdef dromic_model < ws.model
             end                                            
         end
 
-        function update_histogram_(self)
+        function update_heatmap_(self)
             if ~isempty(self.controller_) && isvalid(self.controller_) 
-                self.controller_.update_histogram() ;
+                self.controller_.update_heatmap() ;
             end
         end        
 
