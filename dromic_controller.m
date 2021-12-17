@@ -40,8 +40,9 @@ classdef dromic_controller < ws.controller
         bin_duration_edit_units_text_
 
         heatmap_axes_
-        x_axis_label_
-        y_axis_label_
+        heatmap_x_axis_label_
+        heatmap_y_axis_label_
+        colorbar_y_axis_label_
         heatmap_  % an image
         
         colorbar_axes_
@@ -378,14 +379,8 @@ classdef dromic_controller < ws.controller
             set(self.colorbar_axes_, 'YLim', [0 y_max]) ;
             set(self.colorbar_, 'YData', [0 y_max]) ;
             
-%             set(self.y_axis_label_,'String',sprintf('Monitor (%s)',model.get_test_pulse_electrode_monitor_units()));
-%             t = model.get_test_pulse_monitor_histogram_timeline() ;
-%             %t=testPulser.Time;
-%             set(self.histogram_line_,'XData',1000*t,'YData',nan(size(t)));  % convert s to ms
             set(self.zoom_in_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
             set(self.zoom_out_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
-%             set(self.scroll_up_button_,'Enable',ws.on_iff(~is_auto_y));
-%             set(self.scroll_down_button_,'Enable',ws.on_iff(~is_auto_y));
             set(self.y_limits_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
             set(self.clear_button_,'Enable',ws.on_iff(is_idle));
             self.update_heatmap();
@@ -563,9 +558,11 @@ classdef dromic_controller < ws.controller
                      'Visible','on' ) ;
 %                      'PositionConstraint', 'outerposition');
             
-            % X-axis label
-            self.x_axis_label_ = ...
+            % Heatmap axis labels
+            self.heatmap_x_axis_label_ = ...
                 xlabel(self.heatmap_axes_,'Time (ms)','FontSize',9,'Interpreter','none') ;
+            self.heatmap_y_axis_label_ = ...
+                xlabel(self.heatmap_axes_,'Channel Index','FontSize',9,'Interpreter','none') ;
             
             % Heatmap image
             event_count_from_bin_index = self.model_.event_count_from_bin_index() ;
@@ -595,8 +592,8 @@ classdef dromic_controller < ws.controller
                       'XData', [1 1], ...
                       'YData', [0 y_max]) ;  
 
-            % Y-axis label
-            self.y_axis_label_ = ...
+            % Colorbar y-axis label
+            self.colorbar_y_axis_label_ = ...
                 ylabel(self.colorbar_axes_,'Event Count','FontSize',9,'Interpreter','none') ;
                   
 %             % Update rate text
