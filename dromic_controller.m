@@ -1,6 +1,6 @@
 classdef dromic_controller < ws.controller
     properties 
-        start_stop_button_
+        start_button_
 
         auto_colormap_max_checkbox_
 
@@ -208,8 +208,8 @@ classdef dromic_controller < ws.controller
 %             is_auto_colormap_maxrepeating = model.is_auto_colormap_maxrepeating_in_test_pulse_view ;
 %             
 %             % Update the graphics objects to match the model and/or host
-%             is_start_stop_button_enabled = model.is_test_pulsing_enabled() ;
-            set(self.start_stop_button_, ...
+%             is_start_button_enabled = model.is_test_pulsing_enabled() ;
+            set(self.start_button_, ...
                 'String',ws.fif(is_running,'Stop','Start'));
 %             
 %             electrode_names = model.get_all_electrode_names ;
@@ -400,7 +400,7 @@ classdef dromic_controller < ws.controller
             %fprintf('Inside create_fixed_controls_()\n') ;
 
             % Start/stop button
-            self.start_stop_button_= ...
+            self.start_button_= ...
                 ws.uicontrol('Parent',self.figure_, ...
                           'Style','pushbutton', ...
                           'String','Start');
@@ -726,14 +726,14 @@ classdef dromic_controller < ws.controller
             text_height = 18 ;  % for 8 pt font
             
             % Top stuff layout parameters
-            width_from_top_stuff_left_to_start_stop_button = 22 ;
-            height_from_top_stuff_top_to_start_stop_button = 20 ;
-            start_stop_button_width = 96 ;
-            start_stop_button_height = 28 ;
-            width_from_start_bank_to_checkbox_bank = 26 ;
+            width_from_top_stuff_left_to_start_button = 22 ;
+            height_from_top_stuff_top_to_start_button = 20 ;
+            start_button_width = 96 ;
+            start_button_height = 28 ;
+            width_from_start_bank_to_checkbox_bank = 0 ;
             % checkbox_bank_width = 80 ;
             width_from_checkbox_bank_to_trigger_bank = 30 ;
-            height_from_layout_top_to_auto_colormap_max_checkbox = 6 ; 
+            %height_from_layout_top_to_auto_colormap_max_checkbox = 6 ; 
 %             height_between_checkboxes = -1 ;
 %             width_of_auto_colormap_maxrepeating_indent = 14 ;
             height_between_trigger_bank_rows = 6 ;
@@ -795,29 +795,41 @@ classdef dromic_controller < ws.controller
             
             % The start/stop button
             top_stuff_top_y_offset = layout_top_y_offset ;
-            start_stop_button_x = width_from_top_stuff_left_to_start_stop_button ;
-            start_stop_button_y = top_stuff_top_y_offset - height_from_top_stuff_top_to_start_stop_button - start_stop_button_height ;
-            set(self.start_stop_button_, ...
-                'Position',[start_stop_button_x start_stop_button_y ...
-                            start_stop_button_width start_stop_button_height]);
+            start_button_x = width_from_top_stuff_left_to_start_button ;
+            start_button_y = top_stuff_top_y_offset - height_from_top_stuff_top_to_start_button - start_button_height ;
+            set(self.start_button_, ...
+                'Position',[start_button_x start_button_y ...
+                            start_button_width start_button_height]);
                   
+            % Auto colormap max checkbox
+            space_from_start_button_to_colormap_max_checkbox = 16 ;
+            [auto_colormap_max_checkbox_text_width, auto_colormap_max_checkbox_text_height] = ws.get_extent(self.auto_colormap_max_checkbox_) ;
+            auto_colormap_max_checkbox_width = auto_colormap_max_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
+            auto_colormap_max_checkbox_height = auto_colormap_max_checkbox_text_height ;
+            auto_colormap_max_checkbox_y = start_button_y - auto_colormap_max_checkbox_height - space_from_start_button_to_colormap_max_checkbox ;
+            auto_colormap_max_checkbox_x = start_button_x ;
+            set(self.auto_colormap_max_checkbox_, ...
+                'Position',[auto_colormap_max_checkbox_x auto_colormap_max_checkbox_y ...
+                            auto_colormap_max_checkbox_width auto_colormap_max_checkbox_height]) ;
+                        
+                        
             %
             % The checkbox "bank"
             %
 
-            checkbox_bank_x_offset = width_from_top_stuff_left_to_start_stop_button + start_stop_button_width + width_from_start_bank_to_checkbox_bank ;
+            checkbox_bank_x_offset = width_from_top_stuff_left_to_start_button + start_button_width + width_from_start_bank_to_checkbox_bank ;
             
-            % Auto colormap max checkbox
-            [auto_colormap_max_checkbox_text_width, auto_colormap_max_checkbox_text_height] = ws.get_extent(self.auto_colormap_max_checkbox_) ;
-            auto_colormap_max_checkbox_width = auto_colormap_max_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
-            auto_colormap_max_checkbox_height = auto_colormap_max_checkbox_text_height ;
-            auto_colormap_max_checkbox_y = top_stuff_top_y_offset - height_from_layout_top_to_auto_colormap_max_checkbox - auto_colormap_max_checkbox_height ;
-            auto_colormap_max_checkbox_x = checkbox_bank_x_offset ;
-            set(self.auto_colormap_max_checkbox_, ...
-                'Position',[auto_colormap_max_checkbox_x auto_colormap_max_checkbox_y ...
-                            auto_colormap_max_checkbox_width auto_colormap_max_checkbox_height]) ;
+%             % Auto colormap max checkbox
+%             [auto_colormap_max_checkbox_text_width, auto_colormap_max_checkbox_text_height] = ws.get_extent(self.auto_colormap_max_checkbox_) ;
+%             auto_colormap_max_checkbox_width = auto_colormap_max_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
+%             auto_colormap_max_checkbox_height = auto_colormap_max_checkbox_text_height ;
+%             auto_colormap_max_checkbox_y = top_stuff_top_y_offset - height_from_layout_top_to_auto_colormap_max_checkbox - auto_colormap_max_checkbox_height ;
+%             auto_colormap_max_checkbox_x = checkbox_bank_x_offset ;
+%             set(self.auto_colormap_max_checkbox_, ...
+%                 'Position',[auto_colormap_max_checkbox_x auto_colormap_max_checkbox_y ...
+%                             auto_colormap_max_checkbox_width auto_colormap_max_checkbox_height]) ;
 
-            checkbox_bank_width = auto_colormap_max_checkbox_text_width ;
+            checkbox_bank_width = 0 ;
 
 
 %             % Auto Y Locked checkbox
@@ -1014,7 +1026,7 @@ classdef dromic_controller < ws.controller
                 max([pre_trigger_duration_edit_label_text_width post_trigger_duration_edit_label_text_width bin_duration_edit_label_text_width]) ;
 
             % The pre_trigger_duration edit and its label
-            pre_trigger_duration_edit_label_text_x = ...
+            parameters_bank_x = ...
                 checkbox_bank_x_offset + ...
                 checkbox_bank_width + ...
                 width_from_checkbox_bank_to_trigger_bank + ...
@@ -1022,6 +1034,7 @@ classdef dromic_controller < ws.controller
                 width_between_trigger_bank_and_monitored_bank + ...                
                 monitored_bank_width + ...
                 width_from_monitor_bank_to_parameters_bank ;
+            pre_trigger_duration_edit_label_text_x = parameters_bank_x ;
             pre_trigger_duration_edit_label_text_y = top_stuff_top_y_offset - edit_height - height_from_layout_top_to_parameters_bank ;
             set(self.pre_trigger_duration_edit_label_text_, ...
                 'Position',[pre_trigger_duration_edit_label_text_x pre_trigger_duration_edit_label_text_y ...
@@ -1041,7 +1054,7 @@ classdef dromic_controller < ws.controller
                             pre_trigger_duration_edit_units_text_faux_width text_height]);
             
             % The post edit and its label
-            post_trigger_duration_edit_label_text_x=pre_trigger_duration_edit_label_text_x;
+            post_trigger_duration_edit_label_text_x=parameters_bank_x;
             post_trigger_duration_edit_label_text_y=pre_trigger_duration_edit_label_text_y-height_between_pre_and_post;
             set(self.post_trigger_duration_edit_label_text_, ...
                 'Position',[post_trigger_duration_edit_label_text_x post_trigger_duration_edit_label_text_y ...
@@ -1060,7 +1073,7 @@ classdef dromic_controller < ws.controller
                             post_trigger_duration_edit_units_text_width post_trigger_duration_edit_units_text_height]);
             
             % The bin_duration edit and its label
-            bin_duration_edit_label_text_x=pre_trigger_duration_edit_label_text_x;
+            bin_duration_edit_label_text_x=parameters_bank_x;
             bin_duration_edit_label_text_y=post_trigger_duration_edit_label_text_y-height_between_pre_and_post ;
             set(self.bin_duration_edit_label_text_, ...
                 'Position',[bin_duration_edit_label_text_x bin_duration_edit_label_text_y ...
@@ -1077,7 +1090,7 @@ classdef dromic_controller < ws.controller
             set(self.bin_duration_edit_units_text_, ...
                 'Position',[bin_duration_edit_units_text_x bin_duration_edit_units_text_y ...
                             bin_duration_edit_units_text_width bin_duration_edit_units_text_height]);
-
+                        
             % Get the width of the widest units text
             [pre_trigger_duration_edit_units_text_width, ~] = ws.get_extent(self.pre_trigger_duration_edit_units_text_) ;
             [post_trigger_duration_edit_units_text_width, ~] = ws.get_extent(self.post_trigger_duration_edit_units_text_) ;
@@ -1091,8 +1104,8 @@ classdef dromic_controller < ws.controller
 
             % Warn if the top stuff is wider than the layout as a whole
             top_stuff_width = ...
-                width_from_top_stuff_left_to_start_stop_button + ...
-                start_stop_button_width + ...
+                width_from_top_stuff_left_to_start_button + ...
+                start_button_width + ...
                 width_from_start_bank_to_checkbox_bank + ...
                 checkbox_bank_width + ...
                 width_from_checkbox_bank_to_trigger_bank + ...
@@ -1309,8 +1322,8 @@ classdef dromic_controller < ws.controller
         function exception_maybe = control_actuated(self, control_name, source, event, varargin)
             try
                 model = self.model_ ;
-                if strcmp(control_name, 'start_stop_button_') ,
-                    self.start_stop_button_actuated() ;
+                if strcmp(control_name, 'start_button_') ,
+                    self.start_button_actuated() ;
                     exception_maybe = {} ;
                 else
                     % If the model is running, stop it (have to disable broadcast so we don't lose the new setting)
@@ -1341,7 +1354,7 @@ classdef dromic_controller < ws.controller
             end
         end  % function
         
-        function start_stop_button_actuated(self, source, event, varargin)  %#ok<INUSD>
+        function start_button_actuated(self, source, event, varargin)  %#ok<INUSD>
             self.model_.do('toggle_is_running');
         end
         
