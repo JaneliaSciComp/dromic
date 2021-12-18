@@ -28,7 +28,7 @@ classdef fake_spikegl_interface_type < handle
             result = true ;
         end
 
-        function [data, first_scan_index0] = FetchLatest(self, device_type, device_index0, maximum_scan_count, channel_index0)   
+        function [data, first_scan_index0] = FetchLatest(self, device_type, device_index0, maximum_scan_count, channel_indices0)   
             current_time = toc(self.start_tic_id_) ;  % seconds
             fs = self.GetStreamSampleRate(device_type, device_index0) ;  % Hz           
             last_scan_index0 = floor(current_time * fs) ;
@@ -42,7 +42,7 @@ classdef fake_spikegl_interface_type < handle
                            device_index0, ...
                            first_scan_index0, ...
                            scan_count, ...
-                           channel_index0) ;
+                           channel_indices0) ;
             if first_scan_index0_check ~= first_scan_index0 ,
                 error('fake_spikegl_interface_type:internal_error', ...
                       'Internal error in fake_spikegl_interface_type: The first scan index (%d) does not equal the requested first scan index (%d', ...
@@ -69,30 +69,37 @@ classdef fake_spikegl_interface_type < handle
                                                          device_index0, ...
                                                          first_scan_index0, ...
                                                          scan_count, ...
-                                                         channel_index0)  %#ok<INUSD>
+                                                         channel_indices0)
             last_scan_index0 = first_scan_index0 + scan_count - 1 ;
             fs = self.GetStreamSampleRate(device_type, device_index0) ;            
             dt = 1 / fs ;
             t = dt * ( (first_scan_index0:last_scan_index0)' + 1/2 ) ;  % seconds, col vector, 1/2 is to make sampling less likely to land on an edge
+            scan_count = length(t) ;
             
             % Good signals for demoing
+            T = 1 ;  % s, period
             if device_type == device_type_type.nidq ,
                 % If nidq, result should be a int16 that represents a uint16, with the
                 % lowest-order bit executing a 1 Hz square wave with 50% duty cycle.
-                bit = mod(t,1)<0.5 ;
-                data = int16(bit) ;
+                bit = mod(t,T)<T/2 ;
+                single_channel_data = int16(bit) ;
             else
                 % If imec, still int16, but want to have a realistic scale
                 volts_per_count = 2e-6 ;  % V (this must agree with result in GetStreamI16ToVolts()
                 blip_magnitude_in_volts = -200e-6 ;  % V, want it negative-going
                 blip_magnitude_in_counts = blip_magnitude_in_volts / volts_per_count ;  % counts
-                is_odd = mod(floor(t/1),2) ;  % Whether it's been an even or odd number of seconds since the start
+                is_odd = mod(floor(t/T),2) ;  % Whether it's been an even or odd number of periods since the start
                 is_even = 1-is_odd ;                
                 %data = int16(1e4*(mod(t-0.010,1)<0.005)) ;  % Have it blip high for 5 ms, 10 ms after trigger
-                data = int16(blip_magnitude_in_counts*(mod(t-is_odd*0.025-is_even*0.055,1)<0.005)) ;  
+                single_channel_data = int16(blip_magnitude_in_counts*(mod(t-is_odd*0.025-is_even*0.055,T)<0.005)) ;  
                   % Have it blip high for 5 ms.  On odd/even cycles, 25/55 ms after the trigger.                
             end
-
+            channel_count = length(channel_indices0) ;
+            data = zeros([scan_count channel_count], 'int16') ;
+            is_channel_index_even = (mod(channel_indices0, 2) == 0) ;
+            even_channel_count = sum(is_channel_index_even) ;
+            data(:,is_channel_index_even) = repmat(single_channel_data, [1 even_channel_count]) ;
+            
             first_scan_index0_check = first_scan_index0 ;
         end
 
