@@ -33,8 +33,8 @@ classdef dromic_model < ws.model
         carryover_nidq_scan_index_ = -inf
         carryover_trigger_value_ = true  % this prevents a false-positive trigger at the start
         is_running_ = false 
-        is_auto_y_ = true
-        y_max_ = 10
+        is_auto_colormap_max_ = true
+        colormap_max_ = 10  % a count of events, the number that maps to the upper end of the colormap
         handle_timer_tick_call_count_ = 0 
         nidq_scan_index_from_unplotted_trigger_index_ = zeros(0,1)        
         % is_first_tick_after_start_ = true
@@ -279,9 +279,9 @@ classdef dromic_model < ws.model
                 %spike_count_from_bin_index = self.spike_count_from_bin_index_
             end
 
-            % Set the y_max, if called for
-            if self.is_auto_y_ ,
-                self.sync_y_max_from_event_count_from_channel_index_from_bin_index_() ;
+            % Set the colormap_max, if called for
+            if self.is_auto_colormap_max_ ,
+                self.sync_colormap_max_from_event_count_matrix() ;
             end                
 
 %             % Note that this is not the first tick after a start
@@ -291,21 +291,21 @@ classdef dromic_model < ws.model
             self.update_heatmap_() ;
         end  % method
 
-        function sync_y_max_from_event_count_from_channel_index_from_bin_index_(self)
-            % Determine a good y_max
+        function sync_colormap_max_from_event_count_matrix(self)
+            % Determine a good colormap_max
             event_count_from_channel_index_from_bin_index = self.event_count_from_channel_index_from_bin_index_ ;
             fallback_result = 10 ;
             if isempty(event_count_from_channel_index_from_bin_index) ,
-                self.y_max_ = fallback_result ;
+                self.colormap_max_ = fallback_result ;
             else
                 max_event_count = max(event_count_from_channel_index_from_bin_index, [], 'all') ;
                 if isfinite(max_event_count) ,
                     naive_buffer = ceil(0.05*max_event_count) ;
                     buffer = max(naive_buffer, 1) ;
                     naive_result = max_event_count + buffer ;
-                    self.y_max_ = max(naive_result, fallback_result) ;
+                    self.colormap_max_ = max(naive_result, fallback_result) ;
                 else
-                    self.y_max_ = fallback_result ;
+                    self.colormap_max_ = fallback_result ;
                 end
             end            
         end
@@ -603,36 +603,36 @@ classdef dromic_model < ws.model
         end
 
         function result = y_limits(self)
-            result = [0 self.y_max_] ;
+            result = [0 self.colormap_max_] ;
         end
 
-        function result = y_max(self)
-            result = self.y_max_ ;
+        function result = colormap_max(self)
+            result = self.colormap_max_ ;
         end
 
         function zoom_in(self)
-            y_max = self.y_max_ ;
-            new_y_max = y_max/2 ;
-            self.y_max_ = new_y_max ;
+            colormap_max = self.colormap_max_ ;
+            new_colormap_max = colormap_max/2 ;
+            self.colormap_max_ = new_colormap_max ;
             self.update_() ;
         end  % function
         
         function zoom_out(self)
-            y_max = self.y_max_ ;
-            new_y_max = y_max*2 ;
-            self.y_max_ = new_y_max ;
+            colormap_max = self.colormap_max_ ;
+            new_colormap_max = colormap_max*2 ;
+            self.colormap_max_ = new_colormap_max ;
             self.update_() ;
         end  % function
         
-        function set_y_max(self, new_value)
+        function set_colormap_max(self, new_value)
             new_value_maybe = double_maybe_from_whatever(new_value, @(x)(isnumeric(x) && isscalar(x) && isfinite(x) && 0<x)) ;
             if ~isempty(new_value_maybe) ,             
-                self.is_auto_y_ = false ;
-                self.y_max_ = new_value_maybe(1) ;
+                self.is_auto_colormap_max_ = false ;
+                self.colormap_max_ = new_value_maybe(1) ;
             end                
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
-                error('ws:invalid_value', 'Invalid value for y_max') ;
+                error('ws:invalid_value', 'Invalid value for colormap_max') ;
             end                                            
         end
 
@@ -650,21 +650,21 @@ classdef dromic_model < ws.model
             result = self.bin_edges_ ;
         end
         
-        function result = is_auto_y(self)
-            result = self.is_auto_y_ ;
+        function result = is_auto_colormap_max(self)
+            result = self.is_auto_colormap_max_ ;
         end
 
-        function set_is_auto_y(self, new_value)
+        function set_is_auto_colormap_max(self, new_value)
             new_value_maybe = logical_maybe_from_whatever(new_value) ;
             if ~isempty(new_value_maybe) ,             
-                self.is_auto_y_ = new_value_maybe(1) ;
-                if self.is_auto_y_ ,
-                    self.sync_y_max_from_event_count_from_channel_index_from_bin_index_() ;
+                self.is_auto_colormap_max_ = new_value_maybe(1) ;
+                if self.is_auto_colormap_max_ ,
+                    self.sync_colormap_max_from_event_count_matrix() ;
                 end
             end                
             self.update_control_properties_() ;
             if isempty(new_value_maybe) ,
-                error('ws:invalid_value', 'Invalid value for y_max') ;
+                error('ws:invalid_value', 'Invalid value for colormap_max') ;
             end                                           
         end
     end  % methods

@@ -2,7 +2,7 @@ classdef dromic_controller < ws.controller
     properties 
         start_stop_button_
 
-        auto_y_checkbox_
+        auto_colormap_max_checkbox_
 
         trigger_device_type_edit_label_text_
         trigger_device_type_edit_
@@ -51,15 +51,11 @@ classdef dromic_controller < ws.controller
         clear_button_
         zoom_in_button_
         zoom_out_button_
-        y_limits_button_
+        colormap_max_button_
     end  % properties
     
-%     properties 
-%         y_limits_ = [0 10]   % the current y limits
-%     end
-    
     properties
-        the_ylim_dialog_controller_ = []
+        the_colormap_max_dialog_controller_ = []
     end
     
     methods
@@ -100,8 +96,8 @@ classdef dromic_controller < ws.controller
         end  % constructor
         
         function delete(self)
-            if ~isempty(self.the_ylim_dialog_controller_) && ishandle(self.the_ylim_dialog_controller_) ,
-                delete(self.the_ylim_dialog_controller_) ;
+            if ~isempty(self.the_colormap_max_dialog_controller_) && ishandle(self.the_colormap_max_dialog_controller_) ,
+                delete(self.the_colormap_max_dialog_controller_) ;
             end
             if ~isempty(self.model_) && isvalid(self.model_) ,
                 delete(self.model_) ;
@@ -140,15 +136,15 @@ classdef dromic_controller < ws.controller
             end
 
             % If "Auto Y" is engaged, set the y range
-            if model.is_running() && model.is_auto_y() , 
-                y_max = model.y_max() ;
+            if model.is_running() && model.is_auto_colormap_max() , 
+                colormap_max = model.colormap_max() ;
                 ylim = get(self.colorbar_axes_, 'YLim') ;
-                if ylim(2) ~= y_max ,
-                    set(self.colorbar_axes_, 'YLim', [0 y_max]) ;
+                if ylim(2) ~= colormap_max ,
+                    set(self.colorbar_axes_, 'YLim', [0 colormap_max]) ;
                 end
                 y_data = get(self.colorbar_, 'YData') ;
-                if y_data(2) ~= y_max ,
-                    set(self.colorbar_, 'YData', [0 y_max]) ;
+                if y_data(2) ~= colormap_max ,
+                    set(self.colorbar_, 'YData', [0 colormap_max]) ;
                 end
                 
             end
@@ -208,8 +204,8 @@ classdef dromic_controller < ws.controller
 %             %isWavesurferTestPulsing=(wavesurferModel.State==ws.ApplicationState.TestPulsing);
 %             is_wavesurfer_test_pulsing = model.is_running() ;
 %             is_wavesurfer_idle_or_test_pulsing = is_wavesurfer_idle||is_wavesurfer_test_pulsing ;
-            is_auto_y = model.is_auto_y ;
-%             is_auto_yrepeating = model.is_auto_yrepeating_in_test_pulse_view ;
+            is_auto_colormap_max = model.is_auto_colormap_max ;
+%             is_auto_colormap_maxrepeating = model.is_auto_colormap_maxrepeating_in_test_pulse_view ;
 %             
 %             % Update the graphics objects to match the model and/or host
 %             is_start_stop_button_enabled = model.is_test_pulsing_enabled() ;
@@ -226,11 +222,11 @@ classdef dromic_controller < ws.controller
 %                                          
 %             set(self.subtract_baseline_checkbox_,'Value',model.do_subtract_baseline_in_test_pulse_view, ...
 %                                               'Enable',ws.on_iff(is_wavesurfer_idle_or_test_pulsing));
-            set(self.auto_y_checkbox_, ...
-                'Value',is_auto_y, ...
+            set(self.auto_colormap_max_checkbox_, ...
+                'Value',is_auto_colormap_max, ...
                 'Enable',ws.on_iff(is_idle));
-%             set(self.auto_y_repeating_checkbox_,'Value',is_auto_yrepeating, ...
-%                                             'Enable',ws.on_iff(is_wavesurfer_idle_or_test_pulsing&&is_auto_y));
+%             set(self.auto_colormap_max_repeating_checkbox_,'Value',is_auto_colormap_maxrepeating, ...
+%                                             'Enable',ws.on_iff(is_wavesurfer_idle_or_test_pulsing&&is_auto_colormap_max));
 %                    
 %             % Have to disable these togglebuttons during test pulsing,
 %             % because switching an electrode's mode during test pulsing can
@@ -370,8 +366,8 @@ classdef dromic_controller < ws.controller
 %             end
 %             sweep_duration = 2*model.test_pulse_duration ;
 %             set(self.heatmap_axes_,'XLim',1000*[0 sweep_duration]);
-            y_max = model.y_max() ;
-            set(self.heatmap_axes_,'CLim',[0 y_max]) ;
+            colormap_max = model.colormap_max() ;
+            set(self.heatmap_axes_,'CLim',[0 colormap_max]) ;
             set(self.heatmap_axes_,'XLim',[-pre_trigger_duration +post_trigger_duration]) ;
             channel_id_from_channel_index = model.monitored_channel_indices0() ;  
               % the "channel id" is the zero based index of the SpikeGL channel
@@ -386,13 +382,13 @@ classdef dromic_controller < ws.controller
                                     'YTickLabel', channel_id_from_tick_index) ;
             
             % Update the colorbar
-            y_max = model.y_max() ;
-            set(self.colorbar_axes_, 'YLim', [0 y_max]) ;
-            set(self.colorbar_, 'YData', [0 y_max]) ;
+            colormap_max = model.colormap_max() ;
+            set(self.colorbar_axes_, 'YLim', [0 colormap_max]) ;
+            set(self.colorbar_, 'YData', [0 colormap_max]) ;
             
-            set(self.zoom_in_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
-            set(self.zoom_out_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
-            set(self.y_limits_button_,'Enable',ws.on_iff(is_idle&&~is_auto_y));
+            set(self.zoom_in_button_,'Enable',ws.on_iff(is_idle&&~is_auto_colormap_max));
+            set(self.zoom_out_button_,'Enable',ws.on_iff(is_idle&&~is_auto_colormap_max));
+            set(self.colormap_max_button_,'Enable',ws.on_iff(is_idle&&~is_auto_colormap_max));
             set(self.clear_button_,'Enable',ws.on_iff(is_idle));
             self.update_heatmap();
         end  % method        
@@ -409,14 +405,14 @@ classdef dromic_controller < ws.controller
                           'Style','pushbutton', ...
                           'String','Start');
                           
-            % Auto Y checkbox
-            self.auto_y_checkbox_= ...
+            % Auto colormap max checkbox
+            self.auto_colormap_max_checkbox_= ...
                 ws.uicontrol('Parent',self.figure_, ...
                               'Style','checkbox', ...
-                              'String','Auto Y');
+                              'String','Auto Colormap Max');
 
 %             % Auto Y repeat checkbox
-%             self.auto_y_repeating_checkbox_= ...
+%             self.auto_colormap_max_repeating_checkbox_= ...
 %                 ws.uicontrol('Parent',self.figure_, ...
 %                         'Style','checkbox', ...
 %                         'String','Repeating');
@@ -585,7 +581,7 @@ classdef dromic_controller < ws.controller
                                   'CData', event_count_from_channel_index_from_bin_index) ;
             
             % Colorbar axes and the colorbar image
-            y_max = self.model_.y_max() ;            
+            colormap_max = self.model_.colormap_max() ;            
             self.colorbar_axes_ = ...
                 axes('Parent', self.figure_, ...
                      'Units', 'pixels', ...
@@ -598,9 +594,9 @@ classdef dromic_controller < ws.controller
             self.colorbar_ = ...
                 image('Parent', self.colorbar_axes_,...
                       'CDataMapping', 'scaled', ...
-                      'CData', linspace(0, y_max, 256)', ...
+                      'CData', linspace(0, colormap_max, 256)', ...
                       'XData', [1 1], ...
-                      'YData', [0 y_max]) ;  
+                      'YData', [0 colormap_max]) ;  
 
             % Colorbar y-axis label
             self.colorbar_y_axis_label_ = ...
@@ -653,7 +649,7 @@ classdef dromic_controller < ws.controller
             
             icon_file_name = fullfile(this_dir_path, 'icons', 'y_manual_set.png');
             cdata = ws.read_png_with_transparency_for_uicontrol_image(icon_file_name) ;
-            self.y_limits_button_= ...
+            self.colormap_max_button_= ...
                 ws.uicontrol('Parent',self.figure_, ...
                           'Style','pushbutton', ...
                           'CData',cdata);
@@ -737,9 +733,9 @@ classdef dromic_controller < ws.controller
             width_from_start_bank_to_checkbox_bank = 26 ;
             % checkbox_bank_width = 80 ;
             width_from_checkbox_bank_to_trigger_bank = 30 ;
-            height_from_layout_top_to_auto_y_checkbox = 6 ; 
+            height_from_layout_top_to_auto_colormap_max_checkbox = 6 ; 
 %             height_between_checkboxes = -1 ;
-%             width_of_auto_yrepeating_indent = 14 ;
+%             width_of_auto_colormap_maxrepeating_indent = 14 ;
             height_between_trigger_bank_rows = 6 ;
             height_between_monitored_bank_rows = 6 ;
             height_between_radiobuttons = 0 ;            
@@ -811,28 +807,28 @@ classdef dromic_controller < ws.controller
 
             checkbox_bank_x_offset = width_from_top_stuff_left_to_start_stop_button + start_stop_button_width + width_from_start_bank_to_checkbox_bank ;
             
-            % Auto Y checkbox
-            [auto_y_checkbox_text_width, auto_y_checkbox_text_height] = ws.get_extent(self.auto_y_checkbox_) ;
-            auto_y_checkbox_width = auto_y_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
-            auto_y_checkbox_height = auto_y_checkbox_text_height ;
-            auto_y_checkbox_y = top_stuff_top_y_offset - height_from_layout_top_to_auto_y_checkbox - auto_y_checkbox_height ;
-            auto_y_checkbox_x = checkbox_bank_x_offset ;
-            set(self.auto_y_checkbox_, ...
-                'Position',[auto_y_checkbox_x auto_y_checkbox_y ...
-                            auto_y_checkbox_width auto_y_checkbox_height]) ;
+            % Auto colormap max checkbox
+            [auto_colormap_max_checkbox_text_width, auto_colormap_max_checkbox_text_height] = ws.get_extent(self.auto_colormap_max_checkbox_) ;
+            auto_colormap_max_checkbox_width = auto_colormap_max_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
+            auto_colormap_max_checkbox_height = auto_colormap_max_checkbox_text_height ;
+            auto_colormap_max_checkbox_y = top_stuff_top_y_offset - height_from_layout_top_to_auto_colormap_max_checkbox - auto_colormap_max_checkbox_height ;
+            auto_colormap_max_checkbox_x = checkbox_bank_x_offset ;
+            set(self.auto_colormap_max_checkbox_, ...
+                'Position',[auto_colormap_max_checkbox_x auto_colormap_max_checkbox_y ...
+                            auto_colormap_max_checkbox_width auto_colormap_max_checkbox_height]) ;
 
-            checkbox_bank_width = auto_y_checkbox_text_width ;
+            checkbox_bank_width = auto_colormap_max_checkbox_text_width ;
 
 
 %             % Auto Y Locked checkbox
-%             [auto_yrepeating_checkbox_text_width,auto_yrepeating_checkbox_text_height] = ws.get_extent(self.auto_y_repeating_checkbox_) ;
-%             auto_yrepeating_checkbox_width = auto_yrepeating_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
-%             auto_yrepeating_checkbox_height = auto_yrepeating_checkbox_text_height ;
-%             auto_yrepeating_checkbox_y = auto_ycheckbox_y - height_between_checkboxes - auto_yrepeating_checkbox_height ;
-%             auto_yrepeating_checkbox_x = checkbox_bank_xoffset + width_of_auto_yrepeating_indent ;
-%             set(self.auto_y_repeating_checkbox_, ...
-%                 'Position',[auto_yrepeating_checkbox_x auto_yrepeating_checkbox_y ...
-%                             auto_yrepeating_checkbox_width auto_yrepeating_checkbox_height]);
+%             [auto_colormap_maxrepeating_checkbox_text_width,auto_colormap_maxrepeating_checkbox_text_height] = ws.get_extent(self.auto_colormap_max_repeating_checkbox_) ;
+%             auto_colormap_maxrepeating_checkbox_width = auto_colormap_maxrepeating_checkbox_text_width + 16 ;  % Add some width to accomodate the checkbox itself
+%             auto_colormap_maxrepeating_checkbox_height = auto_colormap_maxrepeating_checkbox_text_height ;
+%             auto_colormap_maxrepeating_checkbox_y = auto_colormap_maxcheckbox_y - height_between_checkboxes - auto_colormap_maxrepeating_checkbox_height ;
+%             auto_colormap_maxrepeating_checkbox_x = checkbox_bank_xoffset + width_of_auto_colormap_maxrepeating_indent ;
+%             set(self.auto_colormap_max_repeating_checkbox_, ...
+%                 'Position',[auto_colormap_maxrepeating_checkbox_x auto_colormap_maxrepeating_checkbox_y ...
+%                             auto_colormap_maxrepeating_checkbox_width auto_colormap_maxrepeating_checkbox_height]);
 
             % 
             %  The trigger bank
@@ -1112,7 +1108,7 @@ classdef dromic_controller < ws.controller
             % All the stuff above is at a fixed y offset from the top of
             % the layout.  So now we can compute the height of the top
             % stuff rectangle.
-            top_stuff_y_offset = min([auto_y_checkbox_y trigger_channel_bit_index0_edit_y monitored_threshold_falling_button_y bin_duration_edit_y]) ;
+            top_stuff_y_offset = min([auto_colormap_max_checkbox_y trigger_channel_bit_index0_edit_y monitored_threshold_falling_button_y bin_duration_edit_y]) ;
             top_stuff_height = top_stuff_top_y_offset - top_stuff_y_offset ;
 
             % Position of the "bottom stuff" area, which includes the heatmap, the
@@ -1184,10 +1180,10 @@ classdef dromic_controller < ws.controller
                             small_button_size small_button_size]);
             
             % the y limits button
-            y_limits_button_x=small_buttons_x;
-            y_limits_button_y=zoom_out_button_y+small_button_size+space_between_zoom_buttons;  % want above other zoom buttons
-            set(self.y_limits_button_, ...
-                'Position',[y_limits_button_x y_limits_button_y ...
+            colormap_max_button_x=small_buttons_x;
+            colormap_max_button_y=zoom_out_button_y+small_button_size+space_between_zoom_buttons;  % want above other zoom buttons
+            set(self.colormap_max_button_, ...
+                'Position',[colormap_max_button_x colormap_max_button_y ...
                             small_button_size small_button_size]);
 
             % the clear button
@@ -1195,44 +1191,8 @@ classdef dromic_controller < ws.controller
             clear_button_y = heatmap_axes_y + heatmap_axes_height - small_button_size ;            
             set(self.clear_button_, ...
                 'Position',[clear_button_x clear_button_y ...
-                            small_button_size small_button_size]);
-            
-%             % the scroll buttons
-%             scroll_up_button_x=y_range_buttons_x;
-%             scroll_up_button_y=heatmap_axes_y+heatmap_axes_height-y_range_button_size;  % want top-aligned with axes
-%             set(self.scroll_up_button_, ...
-%                 'Position',[scroll_up_button_x scroll_up_button_y ...
-%                             y_range_button_size y_range_button_size]);
-%             scroll_down_button_x=y_range_buttons_x;
-%             scroll_down_button_y=scroll_up_button_y-y_range_button_size-space_between_scroll_buttons;  % want under scroll up button
-%             set(self.scroll_down_button_, ...
-%                 'Position',[scroll_down_button_x scroll_down_button_y ...
-%                             y_range_button_size y_range_button_size]);
-                        
-%             %
-%             % The stuff at the bottom of the figure
-%             %
-%                          
-%             bottom_stuff_yoffset = layout_yoffset + bottom_space_height ;
-%             % The update rate and its label
-%             [update_rate_text_label_text_width,update_rate_text_label_text_height]=ws.get_extent(self.update_rate_text_label_text_);
-%             update_rate_text_label_text_x=width_from_layout_left_to_update_rate_left;
-%             update_rate_text_label_text_y=bottom_stuff_yoffset;
-%             set(self.update_rate_text_label_text_, ...
-%                 'Position',[update_rate_text_label_text_x update_rate_text_label_text_y ...
-%                             update_rate_text_label_text_width update_rate_text_label_text_height]);
-%             update_rate_text_x=update_rate_text_label_text_x+update_rate_text_label_text_width+1;  % shim
-%             update_rate_text_y=bottom_stuff_yoffset;
-%             set(self.update_rate_text_, ...
-%                 'Position',[update_rate_text_x update_rate_text_y ...
-%                             update_rate_text_width update_rate_text_label_text_height]);
-%             [update_rate_units_text_width,update_rate_units_text_height]=ws.get_extent(self.update_rate_text_units_text_);
-%             update_rate_units_text_x=update_rate_text_x+update_rate_text_width+1;  % shim
-%             update_rate_units_text_y=bottom_stuff_yoffset;
-%             set(self.update_rate_text_units_text_, ...
-%                 'Position',[update_rate_units_text_x update_rate_units_text_y ...
-%                             update_rate_units_text_width update_rate_units_text_height]);            
-        end
+                            small_button_size small_button_size]);            
+        end  % function layout_
 
         function update_controls_in_existance_(self)  %#ok<MANU> 
             %fprintf('updateControlsInExistance_!\n');
@@ -1385,14 +1345,14 @@ classdef dromic_controller < ws.controller
             self.model_.do('toggle_is_running');
         end
         
-        function auto_y_checkbox_actuated(self, source, event, varargin)  %#ok<INUSD>
-            new_value = logical(get(self.auto_y_checkbox_,'Value')) ;
-            self.model_.do('set_is_auto_y', new_value) ;
+        function auto_colormap_max_checkbox_actuated(self, source, event, varargin)  %#ok<INUSD>
+            new_value = logical(get(self.auto_colormap_max_checkbox_,'Value')) ;
+            self.model_.do('set_is_auto_colormap_max', new_value) ;
         end
         
-%         function auto_yrepeating_checkbox_actuated(self, source, event, varargin)  %#ok<INUSD>
-%             new_value = logical(get(self.auto_y_repeating_checkbox_,'Value')) ;
-%             self.model_.do('set_is_auto_y_repeating', new_value) ;
+%         function auto_colormap_maxrepeating_checkbox_actuated(self, source, event, varargin)  %#ok<INUSD>
+%             new_value = logical(get(self.auto_colormap_max_repeating_checkbox_,'Value')) ;
+%             self.model_.do('set_is_auto_colormap_max_repeating', new_value) ;
 %         end
         
 %         function pre_trigger_duration_edit_actuated(self, source, event, varargin)  %#ok<INUSD>
@@ -1433,19 +1393,19 @@ classdef dromic_controller < ws.controller
             self.model_.do('zoom_out') ;
         end
         
-        function y_limits_button_actuated(self, source, event, varargin)  %#ok<INUSD>
-            self.the_ylim_dialog_controller_ = [] ;  % if not first call, this should cause the old controller to be garbage collectable
+        function colormap_max_button_actuated(self, source, event, varargin)  %#ok<INUSD>
+            self.the_colormap_max_dialog_controller_ = [] ;  % if not first call, this should cause the old controller to be garbage collectable
             
             model = self.model_ ;
             
-            set_model_y_max_callback = @(new_y_max)(model.do('set_y_max', new_y_max)) ;
+            set_model_colormap_max_callback = @(new_colormap_max)(model.do('set_colormap_max', new_colormap_max)) ;
             
-            self.the_ylim_dialog_controller_ = ...
-                y_max_dialog_controller([], ...
+            self.the_colormap_max_dialog_controller_ = ...
+                colormap_max_dialog_controller([], ...
                                         get(self.figure_,'Position'), ...
-                                        model.y_max(), ...
+                                        model.colormap_max(), ...
                                         '', ...
-                                        set_model_y_max_callback) ;
+                                        set_model_colormap_max_callback) ;
         end
         
 %         function scroll_up_button_actuated(self, source, event, varargin)  %#ok<INUSD>

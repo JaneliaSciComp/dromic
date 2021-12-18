@@ -1,34 +1,34 @@
-classdef y_max_dialog_controller < ws.controller
+classdef colormap_max_dialog_controller < ws.controller
     properties
         % The various HG objects in the figure
-        y_max_text_
-        y_max_edit_
-        y_max_units_text_
+        colormap_max_text_
+        colormap_max_edit_
+        colormap_max_units_text_
         ok_button_
         cancel_button_
         % Other things
-        y_max_
-        is_y_max_acceptable_
+        colormap_max_
+        is_colormap_max_acceptable_
         y_units_
         callback_function_
     end
     
     methods
-        function self = y_max_dialog_controller(model, parent_figure_position, y_max, y_units, callback_function)
+        function self = colormap_max_dialog_controller(model, parent_figure_position, colormap_max, y_units, callback_function)
             % Call the super-class consructor
             self = self@ws.controller(model) ;
             
             % Initialize some properties
-            self.y_max_ = y_max ;
+            self.colormap_max_ = colormap_max ;
             self.y_units_ = y_units ;
             self.callback_function_ = callback_function ;
-            self.is_y_max_acceptable_ = y_max_dialog_controller.is_y_max_acceptable(y_max) ;
+            self.is_colormap_max_acceptable_ = colormap_max_dialog_controller.is_colormap_max_acceptable(colormap_max) ;
             
             % Set the relevant properties of the figure itself
-            set(self.figure_, 'Tag', 'y_max_dialog_controller', ...
+            set(self.figure_, 'Tag', 'colormap_max_dialog_controller', ...
                                 'Units', 'pixels', ...
                                 'Resize', 'off', ...
-                                'Name', 'Y Limits...', ...
+                                'Name', 'Colormap Max...', ...
                                 'Menubar', 'none', ...
                                 'Toolbar', 'none', ...
                                 'NumberTitle', 'off', ...
@@ -52,7 +52,7 @@ classdef y_max_dialog_controller < ws.controller
             self.show() ;
             
             % Give the top edit keyboard focus
-            uicontrol(self.y_max_edit_) ;
+            uicontrol(self.colormap_max_edit_) ;
         end  % constructor
     end
     
@@ -61,16 +61,16 @@ classdef y_max_dialog_controller < ws.controller
             % Creates the controls that are guaranteed to persist
             % throughout the life of the window, but doesn't position them
             
-            self.y_max_text_=...
+            self.colormap_max_text_=...
                 ws.uicontrol('Parent',self.figure_, ...
                              'Style','text', ...
                              'HorizontalAlignment','right', ...
-                             'String','Y Max:');
-            self.y_max_edit_=...
+                             'String','Colormap Max:');
+            self.colormap_max_edit_=...
                 ws.uiedit('Parent',self.figure_, ...
                           'HorizontalAlignment','right', ...
-                          'KeypressFcn',@(source,event)(self.key_pressed_on_edit('y_max_edit_',source,event)));
-            self.y_max_units_text_=...
+                          'KeypressFcn',@(source,event)(self.key_pressed_on_edit('colormap_max_edit_',source,event)));
+            self.colormap_max_units_text_=...
                 ws.uicontrol('Parent',self.figure_, ...
                           'Style','text', ...
                           'HorizontalAlignment','left', ...
@@ -96,7 +96,7 @@ classdef y_max_dialog_controller < ws.controller
             top_space_height=20;
             left_space_width=40;
             width_between_label_and_edit=5;
-            label_width=50;
+            label_width=80;
             label_height=row_height;
             edit_xoffset=left_space_width+label_width+width_between_label_and_edit;
             edit_width=60;
@@ -130,9 +130,9 @@ classdef y_max_dialog_controller < ws.controller
             % Layout the edit rows
             y_offset_of_top_row=bottom_space_height+bottom_button_height+height_between_edit_rows_and_bottom_button_row+(n_rows-1)*(row_height+inter_row_height);                        
             y_offset_of_this_row=y_offset_of_top_row;
-            set(self.y_max_text_     ,'Position',[left_space_width y_offset_of_this_row label_width label_height]);
-            set(self.y_max_edit_     ,'Position',[edit_xoffset y_offset_of_this_row+edit_tweak_height edit_width edit_height]);
-            set(self.y_max_units_text_,'Position',[units_xoffset y_offset_of_this_row units_width units_height]);
+            set(self.colormap_max_text_     ,'Position',[left_space_width y_offset_of_this_row label_width label_height]);
+            set(self.colormap_max_edit_     ,'Position',[edit_xoffset y_offset_of_this_row+edit_tweak_height edit_width edit_height]);
+            set(self.colormap_max_units_text_,'Position',[units_xoffset y_offset_of_this_row units_width units_height]);
             
 %             y_offset_of_this_row=y_offset_of_this_row-(row_height+inter_row_height);            
 %             set(self.y_min_text_     ,'Position',[left_space_width y_offset_of_this_row label_width label_height]);
@@ -191,40 +191,40 @@ classdef y_max_dialog_controller < ws.controller
     end  % public methods block
     
     methods (Static)
-        function result = is_y_max_acceptable(y_max)
-            result = isfinite(y_max) && (y_max>0) ;
+        function result = is_colormap_max_acceptable(colormap_max)
+            result = isfinite(colormap_max) && (colormap_max>0) ;
         end
     end 
 
     methods (Access=protected)
-        function sync_is_y_max_acceptable_given_y_max_(self)
-            self.is_y_max_acceptable_ = y_max_dialog_controller.is_y_max_acceptable(self.y_max_) ;
+        function sync_is_colormap_max_acceptable_given_colormap_max_(self)
+            self.is_colormap_max_acceptable_ = colormap_max_dialog_controller.is_colormap_max_acceptable(self.colormap_max_) ;
         end
         
-        function set_y_max_given_edit_contents_(self)
-            y_max_as_string=get(self.y_max_edit_,'String') ;
-            y_max=str2double(y_max_as_string);
-            self.y_max_ = y_max ;
+        function set_colormap_max_given_edit_contents_(self)
+            colormap_max_as_string=get(self.colormap_max_edit_,'String') ;
+            colormap_max=str2double(colormap_max_as_string);
+            self.colormap_max_ = colormap_max ;
         end
         
 %         function sync_ok_button_enablement_from_edit_contents_(self)
-%             self.set_y_max_given_edit_contents_() ;
-%             self.sync_is_y_max_acceptable_given_y_max_() ;
+%             self.set_colormap_max_given_edit_contents_() ;
+%             self.sync_is_colormap_max_acceptable_given_colormap_max_() ;
 %             self.update_control_enablement_() ;
 %         end
     end 
         
     methods
         function ok_button_actuated(self,source,event) 
-            self.set_y_max_given_edit_contents_() ;
-            self.sync_is_y_max_acceptable_given_y_max_() ;
+            self.set_colormap_max_given_edit_contents_() ;
+            self.sync_is_colormap_max_acceptable_given_colormap_max_() ;
             %self.updateControlEnablement_() ;
-            if self.is_y_max_acceptable_ ,
+            if self.is_colormap_max_acceptable_ ,
                 %fprintf('YLimits are acceptable\n') ;
                 %yLimits = self.YLimits_
-                y_max = self.y_max_ ;
+                colormap_max = self.colormap_max_ ;
                 callback_function = self.callback_function_ ;
-                feval(callback_function, y_max) ;
+                feval(callback_function, colormap_max) ;
                 self.close_requested_(source, event) ;
             else
                 %fprintf('YLimits are *not* acceptable\n') ;
@@ -236,9 +236,9 @@ classdef y_max_dialog_controller < ws.controller
             self.close_requested_(source, event) ;
         end
         
-        function y_max_edit_actuated(self, source, event)  %#ok<INUSD>
-            self.set_y_max_given_edit_contents_() ;
-            self.sync_is_y_max_acceptable_given_y_max_() ;
+        function colormap_max_edit_actuated(self, source, event)  %#ok<INUSD>
+            self.set_colormap_max_given_edit_contents_() ;
+            self.sync_is_colormap_max_acceptable_given_colormap_max_() ;
             self.update_control_enablement_() ;
         end
 
@@ -255,15 +255,15 @@ classdef y_max_dialog_controller < ws.controller
         
         function self = update_control_properties_implementation_(self, varargin)
             % Update the relevant controls
-            y_max = self.y_max_ ;
+            colormap_max = self.colormap_max_ ;
             units_string = self.y_units_ ;
-            set(self.y_max_edit_     ,'String',sprintf('%0.3g',y_max));
-            set(self.y_max_units_text_,'String',units_string);
+            set(self.colormap_max_edit_     ,'String',sprintf('%0.3g',colormap_max));
+            set(self.colormap_max_units_text_,'String',units_string);
         end
         
         function self = update_control_enablement_implementation_(self, varargin)
             % Update the relevant controls
-            set(self.ok_button_,'Enable',ws.on_iff(self.is_y_max_acceptable_));
+            set(self.ok_button_,'Enable',ws.on_iff(self.is_colormap_max_acceptable_));
         end        
     end
 end  % classdef
